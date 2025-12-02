@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +23,7 @@ const MfaEnroll = () => {
   const [loading, setLoading] = useState(false);
   const [enrolling, setEnrolling] = useState(true);
   const [hasExistingFactor, setHasExistingFactor] = useState(false);
+  const enrollmentStarted = React.useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -31,16 +32,22 @@ const MfaEnroll = () => {
     }
 
     if (user) {
-      startEnrollment();
+      startEnrollment(reset);
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, reset]);
 
   const startEnrollment = async (forceReset = false) => {
+    // Prevent multiple enrollment attempts
+    if (enrollmentStarted.current && !forceReset) {
+      return;
+    }
+    enrollmentStarted.current = true;
+    
     setEnrolling(true);
     try {
       const { data: factorsData } = await supabase.auth.mfa.listFactors();
       
-      if (factorsData?.totp) {
+      if (factorsData?.totp && factorsData.totp.length > 0) {
         const verifiedFactor = factorsData.totp.find(f => f.status === 'verified');
         
         // If there's a verified factor and we're not resetting, show option to reset
@@ -52,8 +59,15 @@ const MfaEnroll = () => {
         
         // Remove all existing factors (both verified and unverified)
         for (const factor of factorsData.totp) {
-          await supabase.auth.mfa.unenroll({ factorId: factor.id });
+          try {
+            await supabase.auth.mfa.unenroll({ factorId: factor.id });
+          } catch (unenrollError) {
+            console.log('Error unenrolling factor:', unenrollError);
+          }
         }
+        
+        // Small delay to ensure unenroll is processed
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       // Now enroll a new factor
@@ -72,9 +86,10 @@ const MfaEnroll = () => {
       }
     } catch (error: any) {
       console.error('Error enrolling MFA:', error);
+      enrollmentStarted.current = false; // Allow retry on error
       toast({
         title: 'Erro',
-        description: 'Não foi possível iniciar a configuração do 2FA.',
+        description: 'Não foi possível iniciar a configuração do 2FA. Tente novamente.',
         variant: 'destructive',
       });
     } finally {
@@ -83,6 +98,7 @@ const MfaEnroll = () => {
   };
 
   const handleReset = () => {
+    enrollmentStarted.current = false; // Allow new enrollment
     startEnrollment(true);
   };
 
