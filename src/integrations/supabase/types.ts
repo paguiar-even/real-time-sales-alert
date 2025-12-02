@@ -313,6 +313,24 @@ export type Database = {
         Returns: boolean
       }
       assign_staff_role: { Args: { target_user_id: string }; Returns: boolean }
+      get_hourly_sales_for_staff: {
+        Args: { p_hours?: number; p_tenant_id: string; p_token: string }
+        Returns: {
+          had_zero_sales: boolean
+          hour: string
+          total_sales: number
+        }[]
+      }
+      get_sales_status_for_staff: {
+        Args: { p_limit?: number; p_tenant_id: string; p_token: string }
+        Returns: {
+          created_at: string
+          id: number
+          tenant_id: string
+          vendas_minuto: number
+          vendas_status: string
+        }[]
+      }
       get_staff_tokens: {
         Args: never
         Returns: {
