@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Copy, Check, RefreshCw, Play, Key, Link, Terminal, Activity, Clock, Loader2, CheckCircle2, XCircle, AlertCircle, Users, History } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TenantUsersManager } from './TenantUsersManager';
 import { TenantAccessLogs } from './TenantAccessLogs';
+
+interface StaffToken {
+  id: string;
+  name: string;
+  token: string;
+  user_email: string;
+  is_active: boolean;
+}
 interface Tenant {
   id: string;
   name: string;
@@ -44,6 +53,25 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
   const [tenantStatus, setTenantStatus] = useState<TenantStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [testVendas, setTestVendas] = useState('5');
+  const [staffTokens, setStaffTokens] = useState<StaffToken[]>([]);
+  const [selectedTokenId, setSelectedTokenId] = useState<string>('');
+
+  const fetchStaffTokens = async () => {
+    const { data, error } = await supabase.rpc('get_staff_tokens');
+    if (!error && data) {
+      const activeTokens = data.filter((t: StaffToken) => t.is_active);
+      setStaffTokens(activeTokens);
+      if (activeTokens.length > 0 && !selectedTokenId) {
+        setSelectedTokenId(activeTokens[0].id);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      fetchStaffTokens();
+    }
+  }, [open]);
 
   const webhookBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sales-webhook`;
 
@@ -284,22 +312,50 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
                   URL do Monitor (Acesso Even)
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Use esta URL junto com um token de acesso Even para visualizar o monitor deste tenant
+                  Selecione um token de acesso Even e copie a URL completa para acessar o monitor
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
                 <div className="flex gap-2">
-                  <code className="flex-1 bg-background px-3 py-2 rounded text-sm break-all border">
-                    {`${window.location.origin}/t/${tenant.slug}?token=SEU_TOKEN`}
-                  </code>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => copyToClipboard(`${window.location.origin}/t/${tenant.slug}?token=`, 'Tenant URL')}
-                  >
-                    {copiedField === 'Tenant URL' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                  </Button>
+                  <Select value={selectedTokenId} onValueChange={setSelectedTokenId}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione um token" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staffTokens.length === 0 ? (
+                        <SelectItem value="none" disabled>Nenhum token ativo</SelectItem>
+                      ) : (
+                        staffTokens.map((token) => (
+                          <SelectItem key={token.id} value={token.id}>
+                            {token.name} ({token.user_email})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
+                {selectedTokenId && staffTokens.find(t => t.id === selectedTokenId) && (
+                  <div className="flex gap-2">
+                    <code className="flex-1 bg-background px-3 py-2 rounded text-sm break-all border font-mono">
+                      {`${window.location.origin}/t/${tenant.slug}?token=${staffTokens.find(t => t.id === selectedTokenId)?.token}`}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const token = staffTokens.find(t => t.id === selectedTokenId)?.token;
+                        copyToClipboard(`${window.location.origin}/t/${tenant.slug}?token=${token}`, 'Tenant URL');
+                      }}
+                    >
+                      {copiedField === 'Tenant URL' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
+                {staffTokens.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Crie um token na aba "Tokens Even" para gerar URLs de acesso.
+                  </p>
+                )}
               </CardContent>
             </Card>
 
