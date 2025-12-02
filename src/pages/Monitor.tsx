@@ -3,10 +3,12 @@ import { useAlertSound } from '@/hooks/useAlertSound';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { useAdmin } from '@/hooks/useAdmin';
 import { SalesIndicator } from '@/components/monitor/SalesIndicator';
 import { TimeSinceUpdate } from '@/components/monitor/TimeSinceUpdate';
 import { SalesChart } from '@/components/monitor/SalesChart';
-import { Loader2, Maximize2, Minimize2, Volume2, VolumeX, LogOut } from 'lucide-react';
+import { Loader2, Maximize2, Minimize2, Volume2, VolumeX, LogOut, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Helmet } from 'react-helmet-async';
@@ -15,12 +17,14 @@ import evenIcon from '@/assets/even-icon.png';
 import rowPattern from '@/assets/row-pattern.png';
 
 const Monitor = () => {
+  const navigate = useNavigate();
   const { currentStatus, hourlyData, loading, timeSinceUpdate } = useSalesStatus();
   const isAlert = currentStatus?.vendas_status === 'ALERTA_ZERO';
   const { isMuted, toggleMute } = useAlertSound(isAlert);
   const { isFullscreen, toggleFullscreen } = useFullscreen();
   const { signOut } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
+  const { isAdmin } = useAdmin();
 
   // Use tenant logo if available, otherwise use Even logo
   const displayLogo = tenant?.logo_url || evenLogo;
@@ -205,6 +209,22 @@ const Monitor = () => {
                 <LogOut className="w-4 h-4 mr-2" />
                 Sair
               </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/admin')}
+                  className="rounded-full border-2 hover:bg-white/20"
+                  style={{ 
+                    borderColor: '#00313C', 
+                    color: '#00313C',
+                    backgroundColor: 'transparent'
+                  }}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Admin
+                </Button>
+              )}
             </div>
 
             <Separator className="w-32 mx-auto" style={{ backgroundColor: '#00313C', opacity: 0.3 }} />
