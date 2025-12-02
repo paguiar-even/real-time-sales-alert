@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, RefreshCw, AlertTriangle, CheckCircle2, Clock, TrendingUp, Activity } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle, CheckCircle2, Clock, TrendingUp, Activity, ExternalLink } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -291,12 +291,34 @@ export function TenantsDashboard() {
                                                 {getTimeSinceUpdate(tenant.lastStatus.created_at)}
                                             </span>
                                         </div>
+
+                                        {/* Quick access button */}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full mt-2"
+                                            onClick={() => window.open(`/admin/monitor/${tenant.slug}`, "_blank")}
+                                        >
+                                            <ExternalLink className="h-3 w-3 mr-2" />
+                                            Abrir Monitor
+                                        </Button>
                                     </div>
                                 ) : (
                                     <div className="text-center py-4">
                                         <Clock className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
                                         <p className="text-sm text-muted-foreground">Aguardando dados...</p>
-                                        <p className="text-xs text-muted-foreground/70">Webhook não configurado</p>
+                                        <p className="text-xs text-muted-foreground/70 mb-3">Webhook não configurado</p>
+                                        
+                                        {/* Quick access button even without data */}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="w-full"
+                                            onClick={() => window.open(`/admin/monitor/${tenant.slug}`, "_blank")}
+                                        >
+                                            <ExternalLink className="h-3 w-3 mr-2" />
+                                            Abrir Monitor
+                                        </Button>
                                     </div>
                                 )}
                             </CardContent>
