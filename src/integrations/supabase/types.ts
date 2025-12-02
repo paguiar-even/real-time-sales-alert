@@ -288,19 +288,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_create_user: {
-        Args: {
-          user_email: string
-          user_full_name?: string
-          user_password: string
-          user_phone?: string
-        }
-        Returns: string
-      }
+      admin_create_user:
+        | {
+            Args: {
+              user_email: string
+              user_full_name?: string
+              user_password: string
+              user_phone?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              assign_staff?: boolean
+              user_email: string
+              user_full_name?: string
+              user_password: string
+              user_phone?: string
+            }
+            Returns: string
+          }
       admin_reset_user_mfa: {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      assign_staff_role: { Args: { target_user_id: string }; Returns: boolean }
       get_staff_tokens: {
         Args: never
         Returns: {
@@ -312,6 +324,18 @@ export type Database = {
           name: string
           token: string
           user_email: string
+          user_id: string
+        }[]
+      }
+      get_staff_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          has_active_token: boolean
+          mfa_enabled: boolean
+          phone: string
           user_id: string
         }[]
       }
@@ -359,10 +383,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_staff: { Args: { user_uuid: string }; Returns: boolean }
       log_user_access: {
         Args: { p_action?: string; p_tenant_id: string; p_tenant_name: string }
         Returns: string
       }
+      remove_staff_role: { Args: { target_user_id: string }; Returns: boolean }
       search_users_by_email: {
         Args: { search_email: string }
         Returns: {
