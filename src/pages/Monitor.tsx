@@ -1,10 +1,11 @@
 import { useSalesStatus } from '@/hooks/useSalesStatus';
 import { useAlertSound } from '@/hooks/useAlertSound';
 import { useFullscreen } from '@/hooks/useFullscreen';
+import { useAuth } from '@/hooks/useAuth';
 import { SalesIndicator } from '@/components/monitor/SalesIndicator';
 import { TimeSinceUpdate } from '@/components/monitor/TimeSinceUpdate';
 import { SalesChart } from '@/components/monitor/SalesChart';
-import { Loader2, Maximize2, Minimize2, Volume2, VolumeX } from 'lucide-react';
+import { Loader2, Maximize2, Minimize2, Volume2, VolumeX, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,7 @@ const Monitor = () => {
   const isAlert = currentStatus?.vendas_status === 'ALERTA_ZERO';
   const { isMuted, toggleMute } = useAlertSound(isAlert);
   const { isFullscreen, toggleFullscreen } = useFullscreen();
+  const { signOut } = useAuth();
 
   if (loading) {
     return (
@@ -65,6 +67,15 @@ const Monitor = () => {
                 className="rounded-full text-white/70 hover:text-white hover:bg-white/10"
               >
                 <Minimize2 className="w-6 h-6" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                className="rounded-full text-white/70 hover:text-white hover:bg-white/10"
+                title="Sair"
+              >
+                <LogOut className="w-6 h-6" />
               </Button>
             </div>
           </header>
@@ -174,6 +185,20 @@ const Monitor = () => {
               >
                 <Maximize2 className="w-4 h-4 mr-2" />
                 Tela cheia
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={signOut}
+                className="rounded-full border-2 hover:bg-white/20"
+                style={{ 
+                  borderColor: '#00313C', 
+                  color: '#00313C',
+                  backgroundColor: 'transparent'
+                }}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
               </Button>
             </div>
 
