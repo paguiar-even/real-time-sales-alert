@@ -340,6 +340,16 @@ export type Database = {
           user_tenant_id: string
         }[]
       }
+      get_tenants_for_staff: {
+        Args: { p_token: string }
+        Returns: {
+          id: string
+          is_active: boolean
+          logo_url: string
+          name: string
+          slug: string
+        }[]
+      }
       get_user_email: { Args: { user_uuid: string }; Returns: string }
       get_user_tenant_id: { Args: { user_uuid: string }; Returns: string }
       has_role: {
