@@ -14,6 +14,13 @@ All colors MUST be HSL.
     --background: 42 40% 97%;
     --foreground: 80 35% 20%;
 
+    /* Monitor page specific colors */
+    --monitor-bg: 210 25% 8%;
+    --monitor-success: 142 76% 36%;
+    --monitor-success-bg: 142 76% 36% / 0.15;
+    --monitor-alert: 0 84% 60%;
+    --monitor-alert-bg: 0 84% 60% / 0.15;
+
     --card: 42 35% 98%;
     --card-foreground: 80 35% 20%;
 
