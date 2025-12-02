@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
-import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image } from 'lucide-react';
+import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil } from 'lucide-react';
 import evenLogo from '@/assets/even-logo.png';
 
 interface Tenant {
@@ -51,16 +51,23 @@ const Admin = () => {
   const [loadingTenants, setLoadingTenants] = useState(true);
   const [loadingUserTenants, setLoadingUserTenants] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingLogoId, setUploadingLogoId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTenantForLogo, setSelectedTenantForLogo] = useState<Tenant | null>(null);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   
   // Form state for new tenant
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [emailDomains, setEmailDomains] = useState('');
+
+  // Form state for editing tenant
+  const [editName, setEditName] = useState('');
+  const [editSlug, setEditSlug] = useState('');
+  const [editEmailDomains, setEditEmailDomains] = useState('');
 
   // Form state for user assignment
   const [searchEmail, setSearchEmail] = useState('');
@@ -245,6 +252,61 @@ const Admin = () => {
       });
       fetchTenants();
     }
+  };
+
+  const handleEditTenant = (tenant: Tenant) => {
+    setEditingTenant(tenant);
+    setEditName(tenant.name);
+    setEditSlug(tenant.slug);
+    setEditEmailDomains(tenant.email_domains.join(', '));
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateTenant = async () => {
+    if (!editingTenant || !editName || !editSlug || !editEmailDomains) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Preencha todos os campos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSaving(true);
+    const domains = editEmailDomains.split(',').map(d => d.trim().toLowerCase());
+
+    const { error } = await supabase
+      .from('tenants')
+      .update({
+        name: editName,
+        slug: editSlug.toLowerCase(),
+        email_domains: domains,
+      })
+      .eq('id', editingTenant.id);
+
+    if (error) {
+      console.error('Error updating tenant:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar o cliente.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Sucesso',
+        description: 'Cliente atualizado com sucesso.',
+      });
+      setTenants(prev =>
+        prev.map(t =>
+          t.id === editingTenant.id
+            ? { ...t, name: editName, slug: editSlug.toLowerCase(), email_domains: domains }
+            : t
+        )
+      );
+      setEditDialogOpen(false);
+      setEditingTenant(null);
+    }
+    setSaving(false);
   };
 
   const handleLogoUploadClick = (tenant: Tenant) => {
@@ -624,6 +686,67 @@ const Admin = () => {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+
+                {/* Edit Tenant Dialog */}
+                <Dialog open={editDialogOpen} onOpenChange={(open) => {
+                  setEditDialogOpen(open);
+                  if (!open) {
+                    setEditingTenant(null);
+                  }
+                }}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Editar Cliente</DialogTitle>
+                      <DialogDescription>
+                        Atualize os dados do cliente.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-name">Nome</Label>
+                        <Input
+                          id="edit-name"
+                          placeholder="Ex: Pix do Milhão"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-slug">Slug</Label>
+                        <Input
+                          id="edit-slug"
+                          placeholder="Ex: pdm"
+                          value={editSlug}
+                          onChange={(e) => setEditSlug(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Identificador único usado no webhook.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-domains">Domínios de Email</Label>
+                        <Input
+                          id="edit-domains"
+                          placeholder="Ex: empresa.com.br, empresa.com"
+                          value={editEmailDomains}
+                          onChange={(e) => setEditEmailDomains(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Separe múltiplos domínios por vírgula.
+                        </p>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleUpdateTenant} disabled={saving}>
+                        {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Salvar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
                 {loadingTenants ? (
@@ -690,6 +813,14 @@ const Admin = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditTenant(tenant)}
+                                title="Editar cliente"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
