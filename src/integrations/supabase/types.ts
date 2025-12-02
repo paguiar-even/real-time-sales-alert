@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          mfa_enabled: boolean
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          mfa_enabled?: boolean
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          mfa_enabled?: boolean
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sales_status: {
         Row: {
           created_at: string
