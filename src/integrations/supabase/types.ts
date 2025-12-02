@@ -371,6 +371,15 @@ export type Database = {
           user_email: string
         }[]
       }
+      validate_staff_token_only: {
+        Args: { p_token: string }
+        Returns: {
+          is_valid: boolean
+          token_name: string
+          user_email: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"

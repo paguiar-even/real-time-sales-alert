@@ -42,40 +42,19 @@ export default function StaffTenantsList() {
       return;
     }
 
-    // Validate token with any tenant to check if it's valid
-    const { data, error } = await supabase.rpc('validate_staff_token', {
-      p_token: token,
-      p_tenant_slug: 'any' // We just need to check token validity
+    // Validate token using the dedicated function
+    const { data, error } = await supabase.rpc('validate_staff_token_only', {
+      p_token: token
     });
 
-    // Even if tenant doesn't exist, check if we got user email (token is valid)
-    if (data && data.length > 0) {
-      const result = data[0];
-      // Token is valid if user_email is returned
-      if (result.user_email) {
-        setTokenInfo({
-          isValid: true,
-          userEmail: result.user_email
-        });
-        fetchTenants();
-      } else {
-        setTokenInfo({ isValid: false, userEmail: '' });
-      }
+    if (data && data.length > 0 && data[0].is_valid) {
+      setTokenInfo({
+        isValid: true,
+        userEmail: data[0].user_email || ''
+      });
+      fetchTenants();
     } else {
-      // Try a different approach - check directly if token exists and is active
-      const { data: tokenData } = await supabase
-        .from('staff_access_tokens')
-        .select('user_id, is_active')
-        .eq('token', token)
-        .eq('is_active', true)
-        .maybeSingle();
-      
-      if (tokenData) {
-        setTokenInfo({ isValid: true, userEmail: '' });
-        fetchTenants();
-      } else {
-        setTokenInfo({ isValid: false, userEmail: '' });
-      }
+      setTokenInfo({ isValid: false, userEmail: '' });
     }
 
     setValidating(false);
