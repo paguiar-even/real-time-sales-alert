@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
-import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History } from 'lucide-react';
+import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History, Copy, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import evenLogo from '@/assets/even-logo.png';
 
@@ -90,6 +90,30 @@ const Admin = () => {
   const [searching, setSearching] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedTenantId, setSelectedTenantId] = useState('');
+  const [copiedWebhookId, setCopiedWebhookId] = useState<string | null>(null);
+
+  // Webhook base URL
+  const webhookBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sales-webhook`;
+
+  const copyWebhookUrl = async (tenant: Tenant) => {
+    const url = `${webhookBaseUrl}/${tenant.slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedWebhookId(tenant.id);
+      toast({
+        title: 'URL copiada',
+        description: 'URL do webhook copiada para a área de transferência.',
+      });
+      setTimeout(() => setCopiedWebhookId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível copiar a URL.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -878,6 +902,7 @@ const Admin = () => {
                         <TableHead className="w-[80px]">Logo</TableHead>
                         <TableHead>Nome</TableHead>
                         <TableHead>Slug</TableHead>
+                        <TableHead>Webhook URL (n8n)</TableHead>
                         <TableHead>Domínios</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
@@ -901,6 +926,26 @@ const Admin = () => {
                             <code className="bg-muted px-2 py-1 rounded text-sm">
                               {tenant.slug}
                             </code>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <code className="bg-muted px-2 py-1 rounded text-xs max-w-[200px] truncate" title={`${webhookBaseUrl}/${tenant.slug}`}>
+                                .../{tenant.slug}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyWebhookUrl(tenant)}
+                                title="Copiar URL do webhook"
+                                className="h-7 w-7 p-0"
+                              >
+                                {copiedWebhookId === tenant.id ? (
+                                  <Check className="h-3.5 w-3.5 text-green-500" />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
