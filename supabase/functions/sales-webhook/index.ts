@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-token',
 };
 
 interface SalesWebhookPayload {
@@ -29,6 +29,32 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Validate webhook token
+    const webhookToken = Deno.env.get('SALES_WEBHOOK_TOKEN');
+    const providedToken = req.headers.get('x-webhook-token') || req.headers.get('authorization')?.replace('Bearer ', '');
+
+    if (!webhookToken) {
+      console.error('SALES_WEBHOOK_TOKEN not configured');
+      return new Response(
+        JSON.stringify({ error: 'Webhook token not configured on server' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    if (!providedToken || providedToken !== webhookToken) {
+      console.log('Unauthorized: Invalid or missing token');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid or missing token' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     // Parse request body
     const body: SalesWebhookPayload = await req.json();
     console.log('Received webhook payload:', body);
