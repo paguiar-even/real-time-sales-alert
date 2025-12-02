@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { TenantDetailsDialog } from '@/components/admin/TenantDetailsDialog';
 import { TenantsDashboard } from '@/components/admin/TenantsDashboard';
 import { StaffTokensManager } from '@/components/admin/StaffTokensManager';
+import { EvenUsersManager } from '@/components/admin/EvenUsersManager';
 import evenLogo from '@/assets/even-logo.png';
 
 interface Tenant {
@@ -851,6 +852,10 @@ const Admin = () => {
               <Key className="h-4 w-4" />
               Tokens Even
             </TabsTrigger>
+            <TabsTrigger value="even-users" className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              Usuários Even
+            </TabsTrigger>
             <TabsTrigger value="audit" className="flex items-center gap-2">
               <History className="h-4 w-4" />
               Histórico
@@ -1272,6 +1277,11 @@ const Admin = () => {
           {/* Staff Tokens Tab */}
           <TabsContent value="staff">
             <StaffTokensManager />
+          </TabsContent>
+
+          {/* Even Users Tab */}
+          <TabsContent value="even-users">
+            <EvenUsersManager />
           </TabsContent>
 
           {/* Audit History Tab */}
