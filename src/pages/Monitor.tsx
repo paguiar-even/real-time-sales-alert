@@ -378,6 +378,19 @@ const Monitor = () => {
                                         lastUpdate={currentStatus.created_at}
                                         isFullscreen={false}
                                     />
+                                    
+                                    {/* Status Message */}
+                                    {currentStatus.vendas_status === "OK" && (
+                                        <div className="flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-green-500/15 border border-green-500/30 mt-4">
+                                            <div className="relative flex items-center justify-center">
+                                                <span className="absolute inline-flex h-3 w-3 rounded-full bg-green-500 opacity-75 animate-ping" />
+                                                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+                                            </div>
+                                            <span className="text-green-400 font-medium text-sm">
+                                                Por aqui tá tudo certo! Tá tudo Even!
+                                            </span>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 <div
@@ -399,9 +412,19 @@ const Monitor = () => {
                         </section>
                     </main>
 
+                    {/* Bible Verse */}
+                    <div className="mt-12 text-center px-4 py-8 rounded-2xl" style={{ backgroundColor: "rgba(255, 255, 255, 0.05)" }}>
+                        <p className="text-white/80 text-base leading-relaxed max-w-2xl mx-auto italic">
+                            "Todo aquele, pois, que ouve estas minhas palavras e as pratica será comparado a um homem prudente que construiu a sua casa sobre a rocha. Caiu a chuva, vieram as torrentes, sopraram os ventos e bateram com força contra aquela casa, e ela não desabou, porque tinha sido construída sobre a rocha."
+                        </p>
+                        <p className="text-white/50 text-sm mt-4 font-medium">
+                            — Mateus 7:24-25
+                        </p>
+                    </div>
+
                     {/* Footer */}
                     <footer
-                        className="mt-16 text-center space-y-4 animate-in fade-in duration-1000 delay-300 -mx-4 px-4 py-6 rounded-2xl"
+                        className="mt-8 text-center space-y-4 animate-in fade-in duration-1000 delay-300 -mx-4 px-4 py-6 rounded-2xl"
                         style={{ backgroundColor: "#FFB81C" }}
                     >
                         <Separator className="w-32 mx-auto" style={{ backgroundColor: "#00313C", opacity: 0.3 }} />
