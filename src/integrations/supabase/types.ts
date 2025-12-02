@@ -178,18 +178,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_blocked: boolean
           tenant_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_blocked?: boolean
           tenant_id: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_blocked?: boolean
           tenant_id?: string
           user_id?: string
         }
@@ -208,6 +211,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_user: {
+        Args: {
+          user_email: string
+          user_full_name?: string
+          user_password: string
+          user_phone?: string
+        }
+        Returns: string
+      }
+      admin_reset_user_mfa: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      get_tenant_users: {
+        Args: { target_tenant_id: string }
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          is_blocked: boolean
+          mfa_enabled: boolean
+          phone: string
+          user_id: string
+          user_tenant_id: string
+        }[]
+      }
       get_user_email: { Args: { user_uuid: string }; Returns: string }
       get_user_tenant_id: { Args: { user_uuid: string }; Returns: string }
       has_role: {

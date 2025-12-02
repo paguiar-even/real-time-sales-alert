@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Copy, Check, RefreshCw, Play, Key, Link, Terminal, Activity, Clock, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
-
+import { Copy, Check, RefreshCw, Play, Key, Link, Terminal, Activity, Clock, Loader2, CheckCircle2, XCircle, AlertCircle, Users } from 'lucide-react';
+import { TenantUsersManager } from './TenantUsersManager';
 interface Tenant {
   id: string;
   name: string;
@@ -174,7 +174,7 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {tenant.name}
@@ -189,21 +189,30 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="status" className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="users" className="mt-4">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Usuários
+            </TabsTrigger>
             <TabsTrigger value="status" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
               Status
             </TabsTrigger>
             <TabsTrigger value="config" className="flex items-center gap-2">
               <Key className="h-4 w-4" />
-              Configuração
+              Webhook
             </TabsTrigger>
             <TabsTrigger value="test" className="flex items-center gap-2">
               <Play className="h-4 w-4" />
               Testar
             </TabsTrigger>
           </TabsList>
+
+          {/* Users Tab */}
+          <TabsContent value="users" className="mt-4">
+            <TenantUsersManager tenantId={tenant.id} tenantName={tenant.name} />
+          </TabsContent>
 
           {/* Status Tab */}
           <TabsContent value="status" className="space-y-4 mt-4">
