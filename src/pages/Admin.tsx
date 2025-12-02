@@ -14,8 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
-import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History, Copy, Check, RefreshCw, Key } from 'lucide-react';
+import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History, Copy, Check, RefreshCw, Key, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { TenantDetailsDialog } from '@/components/admin/TenantDetailsDialog';
 import evenLogo from '@/assets/even-logo.png';
 
 interface Tenant {
@@ -94,6 +95,8 @@ const Admin = () => {
   const [copiedWebhookId, setCopiedWebhookId] = useState<string | null>(null);
   const [copiedTokenId, setCopiedTokenId] = useState<string | null>(null);
   const [regeneratingTokenId, setRegeneratingTokenId] = useState<string | null>(null);
+  const [detailsTenant, setDetailsTenant] = useState<Tenant | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   // Webhook base URL
   const webhookBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sales-webhook`;
@@ -184,6 +187,23 @@ const Admin = () => {
     }
     
     setRegeneratingTokenId(null);
+  };
+
+  const openTenantDetails = (tenant: Tenant) => {
+    setDetailsTenant(tenant);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleTokenRegenerated = (tenantId: string, newToken: string) => {
+    setTenants(prev =>
+      prev.map(t =>
+        t.id === tenantId ? { ...t, webhook_token: newToken } : t
+      )
+    );
+    // Update the details dialog tenant if it's the same one
+    if (detailsTenant?.id === tenantId) {
+      setDetailsTenant(prev => prev ? { ...prev, webhook_token: newToken } : null);
+    }
   };
 
   useEffect(() => {
@@ -973,8 +993,6 @@ const Admin = () => {
                         <TableHead className="w-[80px]">Logo</TableHead>
                         <TableHead>Nome</TableHead>
                         <TableHead>Slug</TableHead>
-                        <TableHead>Webhook URL</TableHead>
-                        <TableHead>Token</TableHead>
                         <TableHead>Domínios</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
@@ -998,61 +1016,6 @@ const Admin = () => {
                             <code className="bg-muted px-2 py-1 rounded text-sm">
                               {tenant.slug}
                             </code>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <code className="bg-muted px-2 py-1 rounded text-xs" title={`${webhookBaseUrl}/${tenant.slug}`}>
-                                .../{tenant.slug}
-                              </code>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => copyWebhookUrl(tenant)}
-                                title="Copiar URL"
-                                className="h-6 w-6 p-0"
-                              >
-                                {copiedWebhookId === tenant.id ? (
-                                  <Check className="h-3 w-3 text-green-500" />
-                                ) : (
-                                  <Copy className="h-3 w-3" />
-                                )}
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
-                                {tenant.webhook_token ? `${tenant.webhook_token.substring(0, 8)}...` : '-'}
-                              </code>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => copyWebhookToken(tenant)}
-                                title="Copiar token"
-                                className="h-6 w-6 p-0"
-                                disabled={!tenant.webhook_token}
-                              >
-                                {copiedTokenId === tenant.id ? (
-                                  <Check className="h-3 w-3 text-green-500" />
-                                ) : (
-                                  <Key className="h-3 w-3" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => regenerateWebhookToken(tenant)}
-                                title="Regenerar token"
-                                className="h-6 w-6 p-0"
-                                disabled={regeneratingTokenId === tenant.id}
-                              >
-                                {regeneratingTokenId === tenant.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  <RefreshCw className="h-3 w-3" />
-                                )}
-                              </Button>
-                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
@@ -1079,6 +1042,15 @@ const Admin = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openTenantDetails(tenant)}
+                                title="Ver detalhes e webhook"
+                              >
+                                <ExternalLink className="h-4 w-4 mr-1" />
+                                Detalhes
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1393,6 +1365,14 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Tenant Details Dialog */}
+      <TenantDetailsDialog
+        tenant={detailsTenant}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        onTokenRegenerated={handleTokenRegenerated}
+      />
     </div>
   );
 };
