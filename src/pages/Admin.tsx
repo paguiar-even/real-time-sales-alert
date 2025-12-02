@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,8 +12,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
-import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users } from 'lucide-react';
+import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image } from 'lucide-react';
 import evenLogo from '@/assets/even-logo.png';
 
 interface Tenant {
@@ -52,6 +53,9 @@ const Admin = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogoId, setUploadingLogoId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedTenantForLogo, setSelectedTenantForLogo] = useState<Tenant | null>(null);
   
   // Form state for new tenant
   const [name, setName] = useState('');
@@ -243,6 +247,145 @@ const Admin = () => {
     }
   };
 
+  const handleLogoUploadClick = (tenant: Tenant) => {
+    setSelectedTenantForLogo(tenant);
+    fileInputRef.current?.click();
+  };
+
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedTenantForLogo) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Arquivo inválido',
+        description: 'Selecione uma imagem (PNG, JPG, etc).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: 'Arquivo muito grande',
+        description: 'O tamanho máximo é 2MB.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setUploadingLogoId(selectedTenantForLogo.id);
+
+    try {
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${selectedTenantForLogo.slug}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Delete old logo if exists
+      if (selectedTenantForLogo.logo_url) {
+        const oldPath = selectedTenantForLogo.logo_url.split('/').pop();
+        if (oldPath) {
+          await supabase.storage.from('tenant-logos').remove([oldPath]);
+        }
+      }
+
+      // Upload new logo
+      const { error: uploadError } = await supabase.storage
+        .from('tenant-logos')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('tenant-logos')
+        .getPublicUrl(filePath);
+
+      // Update tenant with new logo URL
+      const { error: updateError } = await supabase
+        .from('tenants')
+        .update({ logo_url: urlData.publicUrl })
+        .eq('id', selectedTenantForLogo.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Update local state
+      setTenants(prev =>
+        prev.map(t =>
+          t.id === selectedTenantForLogo.id ? { ...t, logo_url: urlData.publicUrl } : t
+        )
+      );
+
+      toast({
+        title: 'Logo atualizado',
+        description: `Logo de ${selectedTenantForLogo.name} foi atualizado com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível fazer upload do logo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingLogoId(null);
+      setSelectedTenantForLogo(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveLogo = async (tenant: Tenant) => {
+    if (!tenant.logo_url) return;
+    if (!confirm(`Remover logo de "${tenant.name}"?`)) return;
+
+    setUploadingLogoId(tenant.id);
+
+    try {
+      // Delete from storage
+      const oldPath = tenant.logo_url.split('/').pop();
+      if (oldPath) {
+        await supabase.storage.from('tenant-logos').remove([oldPath]);
+      }
+
+      // Update tenant
+      const { error } = await supabase
+        .from('tenants')
+        .update({ logo_url: null })
+        .eq('id', tenant.id);
+
+      if (error) throw error;
+
+      setTenants(prev =>
+        prev.map(t =>
+          t.id === tenant.id ? { ...t, logo_url: null } : t
+        )
+      );
+
+      toast({
+        title: 'Logo removido',
+        description: `Logo de ${tenant.name} foi removido.`,
+      });
+    } catch (error) {
+      console.error('Error removing logo:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível remover o logo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingLogoId(null);
+    }
+  };
+
   const handleSearchUsers = async () => {
     if (!searchEmail.trim()) {
       toast({
@@ -370,6 +513,15 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Hidden file input for logo upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleLogoFileChange}
+      />
+
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -486,6 +638,7 @@ const Admin = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[80px]">Logo</TableHead>
                         <TableHead>Nome</TableHead>
                         <TableHead>Slug</TableHead>
                         <TableHead>Domínios</TableHead>
@@ -496,6 +649,16 @@ const Admin = () => {
                     <TableBody>
                       {tenants.map((tenant) => (
                         <TableRow key={tenant.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={tenant.logo_url || undefined} alt={tenant.name} />
+                                <AvatarFallback className="bg-muted">
+                                  {tenant.name.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                          </TableCell>
                           <TableCell className="font-medium">{tenant.name}</TableCell>
                           <TableCell>
                             <code className="bg-muted px-2 py-1 rounded text-sm">
@@ -526,14 +689,42 @@ const Admin = () => {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteTenant(tenant)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleLogoUploadClick(tenant)}
+                                disabled={uploadingLogoId === tenant.id}
+                                title="Upload logo"
+                              >
+                                {uploadingLogoId === tenant.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Upload className="h-4 w-4" />
+                                )}
+                              </Button>
+                              {tenant.logo_url && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoveLogo(tenant)}
+                                  disabled={uploadingLogoId === tenant.id}
+                                  title="Remover logo"
+                                  className="text-orange-500 hover:text-orange-600"
+                                >
+                                  <Image className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteTenant(tenant)}
+                                title="Excluir cliente"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
