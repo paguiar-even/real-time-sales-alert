@@ -101,8 +101,46 @@ const Monitor = () => {
         );
     }
 
-    // No tenant access
+    // No tenant access - redirect admins to admin panel
     if (!tenant) {
+        if (isAdmin) {
+            return (
+                <div
+                    className="min-h-screen flex items-center justify-center"
+                    style={{ backgroundColor: "#00313C" }}
+                >
+                    <div className="flex flex-col items-center gap-4 text-center p-8 max-w-md">
+                        <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                            <Settings className="w-8 h-8 text-yellow-500" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-white">Área de Administração</h1>
+                        <p className="text-white/70">
+                            Como administrador, você não possui um monitor de cliente associado.
+                            Acesse o painel administrativo para gerenciar todos os tenants.
+                        </p>
+                        <div className="flex gap-3 mt-4">
+                            <Button
+                                onClick={() => navigate("/admin")}
+                                style={{ backgroundColor: "#FFB81C", color: "#00313C" }}
+                                className="hover:opacity-90"
+                            >
+                                <Settings className="w-4 h-4 mr-2" />
+                                Painel Admin
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={signOut}
+                                className="border-white/30 text-white hover:bg-white/10"
+                            >
+                                <LogOut className="w-4 h-4 mr-2" />
+                                Sair
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div
                 className="min-h-screen flex items-center justify-center"
