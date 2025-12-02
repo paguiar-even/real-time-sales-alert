@@ -224,8 +224,18 @@ export function TenantsDashboard() {
                 </Card>
             </div>
 
-            {/* All Good Indicator */}
-            {tenantsAlert === 0 && tenantsWithData > 0 && (
+            {/* Status Indicators */}
+            {tenantsAlert > 0 ? (
+                <div className="flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-red-500/10 border border-red-500/30 animate-pulse">
+                    <div className="relative flex items-center justify-center">
+                        <span className="absolute inline-flex h-4 w-4 rounded-full bg-red-500 opacity-75 animate-ping" />
+                        <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+                    </div>
+                    <span className="text-red-600 dark:text-red-400 font-medium">
+                        Atenção! {tenantsAlert} {tenantsAlert === 1 ? "cliente" : "clientes"} com alerta de vendas zeradas
+                    </span>
+                </div>
+            ) : tenantsWithData > 0 ? (
                 <div className="flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-green-500/10 border border-green-500/20">
                     <div className="relative flex items-center justify-center">
                         <span className="absolute inline-flex h-4 w-4 rounded-full bg-green-500 opacity-75 animate-ping" />
@@ -235,7 +245,7 @@ export function TenantsDashboard() {
                         Por aqui, tá tudo certo
                     </span>
                 </div>
-            )}
+            ) : null}
 
             {/* Tenants Grid */}
             {tenants.length === 0 ? (
