@@ -7,7 +7,8 @@ const corsHeaders = {
 
 interface SalesWebhookPayload {
   vendas_minuto: number;
-  vendas_status: 'OK' | 'ALERTA_ZERO';
+  vendas_status?: 'OK' | 'ALERTA_ZERO';
+  tenant_slug?: string;
 }
 
 Deno.serve(async (req) => {
@@ -89,21 +90,52 @@ Deno.serve(async (req) => {
       );
     }
 
-    const body = { vendas_minuto, vendas_status };
-
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Lookup tenant_id if tenant_slug is provided
+    let tenant_id: string | null = null;
+    if (rawBody.tenant_slug) {
+      const { data: tenantData, error: tenantError } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('slug', rawBody.tenant_slug)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (tenantError) {
+        console.error('Error looking up tenant:', tenantError);
+      } else if (tenantData) {
+        tenant_id = tenantData.id;
+        console.log(`Found tenant for slug "${rawBody.tenant_slug}": ${tenant_id}`);
+      } else {
+        console.log(`No tenant found for slug "${rawBody.tenant_slug}"`);
+        return new Response(
+          JSON.stringify({ error: `Tenant not found: ${rawBody.tenant_slug}` }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
     // Insert data into sales_status table
+    const insertData: Record<string, any> = {
+      vendas_minuto,
+      vendas_status
+    };
+
+    if (tenant_id) {
+      insertData.tenant_id = tenant_id;
+    }
+
     const { data, error } = await supabase
       .from('sales_status')
-      .insert({
-        vendas_minuto: body.vendas_minuto,
-        vendas_status: body.vendas_status
-      })
+      .insert(insertData)
       .select()
       .single();
 

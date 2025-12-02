@@ -27,7 +27,7 @@ export const useSalesStatus = () => {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (data && !error) {
       setCurrentStatus(data as SalesStatus);

@@ -18,29 +18,102 @@ export type Database = {
         Row: {
           created_at: string
           id: number
+          tenant_id: string | null
           vendas_minuto: number
           vendas_status: string
         }
         Insert: {
           created_at?: string
           id?: number
+          tenant_id?: string | null
           vendas_minuto?: number
           vendas_status: string
         }
         Update: {
           created_at?: string
           id?: number
+          tenant_id?: string | null
           vendas_minuto?: number
           vendas_status?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "sales_status_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          email_domains: string[]
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email_domains?: string[]
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email_domains?: string[]
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
         Relationships: []
+      }
+      user_tenants: {
+        Row: {
+          created_at: string
+          id: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tenants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_tenant_id: { Args: { user_uuid: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
