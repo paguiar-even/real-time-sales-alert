@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Monitor from "./pages/Monitor";
+import TenantMonitor from "./pages/TenantMonitor";
 import Admin from "./pages/Admin";
 import AdminLogin from "./pages/AdminLogin";
 import MfaEnroll from "./pages/MfaEnroll";
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/mfa/enroll" element={<MfaEnroll />} />
               <Route path="/mfa/verify" element={<MfaVerify />} />
+              <Route path="/t/:slug" element={<TenantMonitor />} />
               <Route 
                 path="/monitor" 
                 element={
