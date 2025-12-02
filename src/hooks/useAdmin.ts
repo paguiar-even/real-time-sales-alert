@@ -1,38 +1,42 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
+import { useState, useEffect } from "react";
+
+import { supabase } from "@/integrations/supabase/client";
+
+import { useAuth } from "./useAuth";
 
 export const useAdmin = () => {
-  const { user } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const checkAdmin = async () => {
-      if (!user) {
-        setIsAdmin(false);
-        setLoading(false);
-        return;
-      }
+    useEffect(() => {
+        const checkAdmin = async () => {
 
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
+            if (!user) {
+                setIsAdmin(false);
+                setLoading(false);
+                return;
+            }
 
-      if (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } else {
-        setIsAdmin(!!data);
-      }
-      setLoading(false);
-    };
+            const { data, error } = await supabase
+                .from("user_roles")
+                .select("role")
+                .eq("user_id", user.id)
+                .eq("role", "admin")
+                .maybeSingle();
 
-    checkAdmin();
-  }, [user]);
+            if (error) {
+                console.error("Error checking admin status:", error);
+                setIsAdmin(false);
+            } else {
+                setIsAdmin(!!data);
+            }
 
-  return { isAdmin, loading };
+            setLoading(false);
+        };
+
+        checkAdmin();
+    }, [user]);
+
+    return { isAdmin, loading };
 };
