@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Helmet } from 'react-helmet-async';
 import evenLogo from '@/assets/even-logo.png';
+import evenIcon from '@/assets/even-icon.png';
+import rowPattern from '@/assets/row-pattern.png';
 import { Loader2, LogIn, UserPlus } from 'lucide-react';
 
 const authSchema = z.object({
@@ -109,96 +112,171 @@ const Auth = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--monitor-bg))]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: '#00313C' }}
+      >
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#FFB81C' }} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--monitor-bg))] p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-card/10 backdrop-blur-sm border border-border/20 rounded-xl p-8 shadow-lg">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <img src={evenLogo} alt="Even7 Logo" className="h-10" />
+    <>
+      <Helmet>
+        <title>Login | Monitor de Vendas - Even Tecnologia</title>
+        <meta name="description" content="Acesse o monitor de vendas em tempo real" />
+      </Helmet>
+
+      <div 
+        className="min-h-screen flex items-center justify-center relative overflow-hidden p-4"
+        style={{ backgroundColor: '#00313C' }}
+      >
+        {/* Row pattern background */}
+        <div 
+          className="absolute inset-0 opacity-5 pointer-events-none" 
+          style={{
+            backgroundImage: `url(${rowPattern})`,
+            backgroundRepeat: 'repeat',
+            backgroundSize: 'auto'
+          }} 
+        />
+
+        <div className="w-full max-w-md relative z-10">
+          {/* Card with Even branding */}
+          <div 
+            className="rounded-2xl p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700"
+            style={{ backgroundColor: '#FFB81C' }}
+          >
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <img src={evenLogo} alt="Even Tecnologia" className="h-12" />
+            </div>
+
+            {/* Title */}
+            <h1 
+              className="text-2xl font-bold text-center mb-1 font-mono"
+              style={{ color: '#00313C' }}
+            >
+              Monitor de Vendas
+            </h1>
+            <p 
+              className="text-center mb-8 text-sm"
+              style={{ color: '#00313C', opacity: 0.7 }}
+            >
+              {isLogin ? 'Entre para acessar o monitor' : 'Crie sua conta para acessar'}
+            </p>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label 
+                  htmlFor="email" 
+                  className="font-medium"
+                  style={{ color: '#00313C' }}
+                >
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="border-2 focus:ring-2 focus:ring-offset-2"
+                  style={{ 
+                    backgroundColor: 'white',
+                    borderColor: '#00313C',
+                    color: '#00313C'
+                  }}
+                  disabled={isSubmitting}
+                />
+                {errors.email && (
+                  <p className="text-sm font-medium" style={{ color: '#dc2626' }}>{errors.email}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label 
+                  htmlFor="password" 
+                  className="font-medium"
+                  style={{ color: '#00313C' }}
+                >
+                  Senha
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="border-2 focus:ring-2 focus:ring-offset-2"
+                  style={{ 
+                    backgroundColor: 'white',
+                    borderColor: '#00313C',
+                    color: '#00313C'
+                  }}
+                  disabled={isSubmitting}
+                />
+                {errors.password && (
+                  <p className="text-sm font-medium" style={{ color: '#dc2626' }}>{errors.password}</p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full border-2 font-semibold transition-all hover:scale-[1.02]"
+                style={{ 
+                  backgroundColor: '#00313C',
+                  borderColor: '#00313C',
+                  color: '#FFB81C'
+                }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : isLogin ? (
+                  <LogIn className="h-4 w-4 mr-2" />
+                ) : (
+                  <UserPlus className="h-4 w-4 mr-2" />
+                )}
+                {isLogin ? 'Entrar' : 'Criar conta'}
+              </Button>
+            </form>
+
+            {/* Toggle */}
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setErrors({});
+                }}
+                className="text-sm font-medium transition-colors hover:underline"
+                style={{ color: '#00313C', opacity: 0.8 }}
+                disabled={isSubmitting}
+              >
+                {isLogin ? 'Não tem conta? Criar agora' : 'Já tem conta? Entrar'}
+              </button>
+            </div>
           </div>
 
-          {/* Title */}
-          <h1 className="text-2xl font-bold text-center text-white mb-2">
-            Monitor de Vendas
-          </h1>
-          <p className="text-center text-white/60 mb-8">
-            {isLogin ? 'Entre para acessar o monitor' : 'Crie sua conta para acessar'}
-          </p>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-white/80">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                disabled={isSubmitting}
-              />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-white/80">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                disabled={isSubmitting}
-              />
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : isLogin ? (
-                <LogIn className="h-4 w-4 mr-2" />
-              ) : (
-                <UserPlus className="h-4 w-4 mr-2" />
-              )}
-              {isLogin ? 'Entrar' : 'Criar conta'}
-            </Button>
-          </form>
-
-          {/* Toggle */}
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setErrors({});
-              }}
-              className="text-sm text-white/60 hover:text-white transition-colors"
-              disabled={isSubmitting}
-            >
-              {isLogin ? 'Não tem conta? Criar agora' : 'Já tem conta? Entrar'}
-            </button>
+          {/* Footer */}
+          <div className="mt-8 text-center animate-in fade-in duration-1000 delay-300">
+            <img 
+              src={evenIcon} 
+              alt="Even Icon" 
+              className="w-10 h-10 mx-auto mb-3 object-contain" 
+              style={{ animation: 'spin 8s linear infinite' }}
+            />
+            <p className="text-sm text-white/50">
+              Construído com excelência pela{" "}
+              <span className="font-semibold text-white/70">Even Tecnologia</span>
+            </p>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
