@@ -10,7 +10,7 @@ import { Helmet } from 'react-helmet-async';
 import evenLogo from '@/assets/even-logo.png';
 import evenIcon from '@/assets/even-icon.png';
 import rowPattern from '@/assets/row-pattern.png';
-import { Loader2, LogIn, UserPlus } from 'lucide-react';
+import { Loader2, LogIn } from 'lucide-react';
 
 const authSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -20,11 +20,10 @@ const authSchema = z.object({
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { signIn, signUp, user, loading } = useAuth();
+  const { signIn, user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -58,52 +57,27 @@ const Auth = () => {
     setIsSubmitting(true);
 
     try {
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            toast({
-              variant: 'destructive',
-              title: 'Erro de login',
-              description: 'Email ou senha incorretos.',
-            });
-          } else {
-            toast({
-              variant: 'destructive',
-              title: 'Erro de login',
-              description: error.message,
-            });
-          }
+      const { error } = await signIn(email, password);
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          toast({
+            variant: 'destructive',
+            title: 'Erro de login',
+            description: 'Email ou senha incorretos.',
+          });
         } else {
           toast({
-            title: 'Login realizado!',
-            description: 'Redirecionando...',
+            variant: 'destructive',
+            title: 'Erro de login',
+            description: error.message,
           });
-          navigate('/monitor');
         }
       } else {
-        const { error } = await signUp(email, password);
-        if (error) {
-          if (error.message.includes('User already registered')) {
-            toast({
-              variant: 'destructive',
-              title: 'Erro no cadastro',
-              description: 'Este email já está cadastrado. Tente fazer login.',
-            });
-          } else {
-            toast({
-              variant: 'destructive',
-              title: 'Erro no cadastro',
-              description: error.message,
-            });
-          }
-        } else {
-          toast({
-            title: 'Conta criada!',
-            description: 'Redirecionando...',
-          });
-          navigate('/monitor');
-        }
+        toast({
+          title: 'Login realizado!',
+          description: 'Redirecionando...',
+        });
+        navigate('/monitor');
       }
     } finally {
       setIsSubmitting(false);
@@ -164,7 +138,7 @@ const Auth = () => {
               className="text-center mb-8 text-sm"
               style={{ color: '#00313C', opacity: 0.7 }}
             >
-              {isLogin ? 'Entre para acessar o monitor' : 'Crie sua conta para acessar'}
+              Entre com suas credenciais para acessar
             </p>
 
             {/* Form */}
@@ -235,29 +209,21 @@ const Auth = () => {
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : isLogin ? (
-                  <LogIn className="h-4 w-4 mr-2" />
                 ) : (
-                  <UserPlus className="h-4 w-4 mr-2" />
+                  <LogIn className="h-4 w-4 mr-2" />
                 )}
-                {isLogin ? 'Entrar' : 'Criar conta'}
+                Entrar
               </Button>
             </form>
 
-            {/* Toggle */}
+            {/* Info */}
             <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setErrors({});
-                }}
-                className="text-sm font-medium transition-colors hover:underline"
-                style={{ color: '#00313C', opacity: 0.8 }}
-                disabled={isSubmitting}
+              <p 
+                className="text-xs"
+                style={{ color: '#00313C', opacity: 0.6 }}
               >
-                {isLogin ? 'Não tem conta? Criar agora' : 'Já tem conta? Entrar'}
-              </button>
+                Não possui acesso? Entre em contato com a Even Tecnologia.
+              </p>
             </div>
           </div>
 

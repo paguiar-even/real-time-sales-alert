@@ -2,13 +2,13 @@ import { useSalesStatus } from '@/hooks/useSalesStatus';
 import { useAlertSound } from '@/hooks/useAlertSound';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/hooks/useTenant';
 import { SalesIndicator } from '@/components/monitor/SalesIndicator';
 import { TimeSinceUpdate } from '@/components/monitor/TimeSinceUpdate';
 import { SalesChart } from '@/components/monitor/SalesChart';
 import { Loader2, Maximize2, Minimize2, Volume2, VolumeX, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
 import { Helmet } from 'react-helmet-async';
 import evenLogo from '@/assets/even-logo.png';
 import evenIcon from '@/assets/even-icon.png';
@@ -20,8 +20,13 @@ const Monitor = () => {
   const { isMuted, toggleMute } = useAlertSound(isAlert);
   const { isFullscreen, toggleFullscreen } = useFullscreen();
   const { signOut } = useAuth();
+  const { tenant, loading: tenantLoading } = useTenant();
 
-  if (loading) {
+  // Use tenant logo if available, otherwise use Even logo
+  const displayLogo = tenant?.logo_url || evenLogo;
+  const displayName = tenant?.name || 'Even Tecnologia';
+
+  if (loading || tenantLoading) {
     return (
       <div 
         className="min-h-screen flex items-center justify-center"
@@ -40,7 +45,7 @@ const Monitor = () => {
     return (
       <>
         <Helmet>
-          <title>Monitor de Vendas | Even Tecnologia</title>
+          <title>Monitor de Vendas | {displayName}</title>
           <meta name="description" content="Monitoramento em tempo real de vendas por minuto" />
         </Helmet>
 
@@ -48,7 +53,7 @@ const Monitor = () => {
           {/* Fullscreen Header */}
           <header className="flex items-center justify-between px-8 py-4 border-b border-white/10">
             <div className="flex items-center gap-4">
-              <img src={evenLogo} alt="Even Tecnologia" className="h-8 w-auto" />
+              <img src={displayLogo} alt={displayName} className="h-8 w-auto" />
               <span className="text-white/70 text-lg">Monitoramento de Vendas</span>
             </div>
             <div className="flex items-center gap-2">
@@ -124,7 +129,7 @@ const Monitor = () => {
   return (
     <>
       <Helmet>
-        <title>Monitor de Vendas | Even Tecnologia</title>
+        <title>Monitor de Vendas | {displayName}</title>
         <meta name="description" content="Monitoramento em tempo real de vendas por minuto" />
       </Helmet>
 
@@ -147,8 +152,8 @@ const Monitor = () => {
           >
             <div className="flex flex-col items-center justify-center gap-4">
               <img 
-                src={evenLogo} 
-                alt="Even Tecnologia" 
+                src={displayLogo} 
+                alt={displayName} 
                 className="h-12 w-auto object-contain" 
               />
               <p className="text-xl font-mono font-semibold" style={{ color: '#00313C' }}>
@@ -252,8 +257,7 @@ const Monitor = () => {
               <img 
                 src={evenIcon} 
                 alt="Even Icon" 
-                className="w-12 h-12 object-contain" 
-                style={{ animation: 'spin 8s linear infinite' }}
+                className="w-12 h-12 object-contain animate-pulse" 
               />
               <p className="text-sm" style={{ color: '#00313C' }}>
                 Construído com excelência pela{" "}
