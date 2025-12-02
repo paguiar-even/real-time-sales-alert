@@ -87,6 +87,22 @@ const Auth = () => {
             if (!user) return;
 
             try {
+                // First check if MFA is required for this user
+                const { data: profileData } = await supabase
+                    .from("profiles")
+                    .select("mfa_enabled")
+                    .eq("id", user.id)
+                    .single();
+
+                const mfaRequired = profileData?.mfa_enabled ?? false;
+
+                // If MFA is not required, go directly to monitor
+                if (!mfaRequired) {
+                    navigate("/monitor");
+                    return;
+                }
+
+                // MFA is required - check if user has a verified factor
                 const { data: factorsData } = await supabase.auth.mfa.listFactors();
                 const totpFactor = factorsData?.totp?.find(f => f.status === "verified");
 

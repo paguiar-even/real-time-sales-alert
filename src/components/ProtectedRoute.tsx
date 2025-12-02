@@ -58,7 +58,22 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
                     }
                 }
 
-                // Check MFA status
+                // Check if MFA is required for this user
+                const { data: profileData } = await supabase
+                    .from("profiles")
+                    .select("mfa_enabled")
+                    .eq("id", user.id)
+                    .single();
+
+                const mfaRequired = profileData?.mfa_enabled ?? false;
+
+                // If MFA is not required, skip MFA checks
+                if (!mfaRequired) {
+                    setCheckingMfa(false);
+                    return;
+                }
+
+                // MFA is required - Check MFA status
                 const { data: factorsData } = await supabase.auth.mfa.listFactors();
                 const totpFactor = factorsData?.totp?.find(f => f.status === "verified");
 
