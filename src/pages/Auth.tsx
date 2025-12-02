@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,8 @@ import { Helmet } from 'react-helmet-async';
 import evenLogo from '@/assets/even-logo.png';
 import evenIcon from '@/assets/even-icon.png';
 import rowPattern from '@/assets/row-pattern.png';
-import { Loader2, LogIn, UserPlus } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, ShieldCheck } from 'lucide-react';
+import { Turnstile } from '@/components/Turnstile';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -33,10 +34,52 @@ const Auth = () => {
   const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string; phone?: string }>({});
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState(false);
+  const turnstileKey = useRef(0);
   
   const { signIn, user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Fetch Turnstile site key
+  useEffect(() => {
+    const fetchSiteKey = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-turnstile-sitekey');
+        if (error) {
+          console.error('Error fetching Turnstile site key:', error);
+          return;
+        }
+        if (data?.siteKey) {
+          setTurnstileSiteKey(data.siteKey);
+        }
+      } catch (error) {
+        console.error('Error fetching Turnstile site key:', error);
+      }
+    };
+    fetchSiteKey();
+  }, []);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+    setTurnstileError(false);
+  }, []);
+
+  const handleTurnstileError = useCallback(() => {
+    setTurnstileToken(null);
+    setTurnstileError(true);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
+  const resetTurnstile = () => {
+    setTurnstileToken(null);
+    turnstileKey.current += 1;
+  };
 
   // Check MFA status and redirect
   useEffect(() => {
@@ -98,12 +141,57 @@ const Auth = () => {
     return true;
   };
 
+  const verifyTurnstile = async (token: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-turnstile', {
+        body: { token }
+      });
+      
+      if (error) {
+        console.error('Turnstile verification error:', error);
+        return false;
+      }
+      
+      return data?.success === true;
+    } catch (error) {
+      console.error('Turnstile verification error:', error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
     
-    setIsSubmitting(true);
+    // Verify Turnstile token (only for login, not signup)
+    if (!isSignUp) {
+      if (!turnstileToken) {
+        toast({
+          variant: 'destructive',
+          title: 'Verificação necessária',
+          description: 'Por favor, complete a verificação de segurança.',
+        });
+        return;
+      }
+      
+      setIsSubmitting(true);
+      
+      // Verify the token with Cloudflare
+      const isValid = await verifyTurnstile(turnstileToken);
+      if (!isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Verificação falhou',
+          description: 'A verificação de segurança falhou. Por favor, tente novamente.',
+        });
+        resetTurnstile();
+        setIsSubmitting(false);
+        return;
+      }
+    } else {
+      setIsSubmitting(true);
+    }
 
     try {
       if (isSignUp) {
@@ -153,6 +241,7 @@ const Auth = () => {
       } else {
         const { error } = await signIn(email, password);
         if (error) {
+          resetTurnstile();
           if (error.message.includes('Invalid login credentials')) {
             toast({
               variant: 'destructive',
@@ -349,6 +438,42 @@ const Auth = () => {
                 )}
               </div>
 
+              {/* Turnstile verification (only for login) */}
+              {!isSignUp && turnstileSiteKey && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShieldCheck className="h-4 w-4" style={{ color: '#00313C' }} />
+                    <span className="text-sm font-medium" style={{ color: '#00313C' }}>
+                      Verificação de segurança
+                    </span>
+                  </div>
+                  <div 
+                    key={turnstileKey.current}
+                    className="rounded-lg overflow-hidden"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.5)' }}
+                  >
+                    <Turnstile
+                      siteKey={turnstileSiteKey}
+                      onVerify={handleTurnstileVerify}
+                      onError={handleTurnstileError}
+                      onExpire={handleTurnstileExpire}
+                      theme="light"
+                    />
+                  </div>
+                  {turnstileError && (
+                    <p className="text-sm font-medium" style={{ color: '#dc2626' }}>
+                      Erro na verificação. Recarregue a página e tente novamente.
+                    </p>
+                  )}
+                  {turnstileToken && (
+                    <p className="text-sm flex items-center gap-1" style={{ color: '#16a34a' }}>
+                      <ShieldCheck className="h-3 w-3" />
+                      Verificação concluída
+                    </p>
+                  )}
+                </div>
+              )}
+
               <Button
                 type="submit"
                 className="w-full border-2 font-semibold transition-all hover:scale-[1.02]"
@@ -357,7 +482,7 @@ const Auth = () => {
                   borderColor: '#00313C',
                   color: '#FFB81C'
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (!isSignUp && turnstileSiteKey && !turnstileToken)}
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -377,6 +502,7 @@ const Auth = () => {
                 onClick={() => {
                   setIsSignUp(!isSignUp);
                   setErrors({});
+                  resetTurnstile();
                 }}
                 className="text-sm font-medium underline hover:no-underline"
                 style={{ color: '#00313C' }}
