@@ -20,19 +20,19 @@ import rowPattern from '@/assets/row-pattern.png';
 
 const Monitor = () => {
   const navigate = useNavigate();
+  const { tenant, loading: tenantLoading, isBlocked } = useTenant();
   const { currentStatus, hourlyData, loading, timeSinceUpdate } = useSalesStatus();
   const isAlert = currentStatus?.vendas_status === 'ALERTA_ZERO';
   const { isMuted, toggleMute } = useAlertSound(isAlert);
   const { isFullscreen, toggleFullscreen } = useFullscreen();
   const { signOut } = useAuth();
-  const { tenant, loading: tenantLoading } = useTenant();
   const { isAdmin } = useAdmin();
   const hasLoggedAccess = useRef(false);
 
   // Log access when user visits the monitor
   useEffect(() => {
     const logAccess = async () => {
-      if (tenant && !hasLoggedAccess.current) {
+      if (tenant && !hasLoggedAccess.current && !isBlocked) {
         hasLoggedAccess.current = true;
         try {
           await supabase.rpc('log_user_access', {
@@ -49,7 +49,7 @@ const Monitor = () => {
     if (!loading && !tenantLoading && tenant) {
       logAccess();
     }
-  }, [tenant, loading, tenantLoading]);
+  }, [tenant, loading, tenantLoading, isBlocked]);
 
   // Use tenant logo if available, otherwise use Even logo
   const displayLogo = tenant?.logo_url || evenLogo;
@@ -64,6 +64,64 @@ const Monitor = () => {
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 animate-spin" style={{ color: '#FFB81C' }} />
           <p className="text-white/70">Carregando dados...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Blocked user
+  if (isBlocked) {
+    return (
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: '#00313C' }}
+      >
+        <div className="flex flex-col items-center gap-4 text-center p-8 max-w-md">
+          <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
+            <LogOut className="w-8 h-8 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-white">Acesso Bloqueado</h1>
+          <p className="text-white/70">
+            Seu acesso a este monitor foi bloqueado pelo administrador.
+            Entre em contato com o suporte para mais informações.
+          </p>
+          <Button 
+            variant="outline" 
+            onClick={signOut}
+            className="mt-4 border-white/30 text-white hover:bg-white/10"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // No tenant access
+  if (!tenant) {
+    return (
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: '#00313C' }}
+      >
+        <div className="flex flex-col items-center gap-4 text-center p-8 max-w-md">
+          <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center">
+            <Settings className="w-8 h-8 text-yellow-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-white">Sem Acesso</h1>
+          <p className="text-white/70">
+            Você não possui acesso a nenhum monitor.
+            Verifique se sua conta está vinculada a um cliente ativo.
+          </p>
+          <Button 
+            variant="outline" 
+            onClick={signOut}
+            className="mt-4 border-white/30 text-white hover:bg-white/10"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair
+          </Button>
         </div>
       </div>
     );
