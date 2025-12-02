@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
-import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History, Copy, Check, RefreshCw, Key, ExternalLink } from 'lucide-react';
+import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History, Copy, Check, RefreshCw, Key, ExternalLink, LayoutDashboard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { TenantDetailsDialog } from '@/components/admin/TenantDetailsDialog';
+import { TenantsDashboard } from '@/components/admin/TenantsDashboard';
 import evenLogo from '@/assets/even-logo.png';
 
 interface Tenant {
@@ -831,8 +832,12 @@ const Admin = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="tenants" className="space-y-6">
+        <Tabs defaultValue="dashboard" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
             <TabsTrigger value="tenants" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               Clientes
@@ -846,6 +851,11 @@ const Admin = () => {
               Histórico
             </TabsTrigger>
           </TabsList>
+
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard">
+            <TenantsDashboard />
+          </TabsContent>
 
           {/* Tenants Tab */}
           <TabsContent value="tenants">
