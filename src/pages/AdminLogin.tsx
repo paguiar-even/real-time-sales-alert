@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { Loader2, Shield, Lock } from "lucide-react";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import { Turnstile } from "@/components/Turnstile";
 
 import evenLogo from "@/assets/even-logo.png";
 
@@ -25,6 +26,69 @@ const AdminLogin = () => {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+    const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
+    const [turnstileError, setTurnstileError] = useState(false);
+    const turnstileKey = useRef(0);
+
+    // Fetch Turnstile site key
+    useEffect(() => {
+        const fetchSiteKey = async () => {
+            try {
+                const { data, error } = await supabase.functions.invoke("get-turnstile-sitekey");
+
+                if (error) {
+                    console.error("Error fetching Turnstile site key:", error);
+                    return;
+                }
+
+                if (data?.siteKey) {
+                    setTurnstileSiteKey(data.siteKey);
+                }
+            } catch (error) {
+                console.error("Error fetching Turnstile site key:", error);
+            }
+        };
+
+        fetchSiteKey();
+    }, []);
+
+    const handleTurnstileVerify = useCallback((token: string) => {
+        setTurnstileToken(token);
+        setTurnstileError(false);
+    }, []);
+
+    const handleTurnstileError = useCallback(() => {
+        setTurnstileToken(null);
+        setTurnstileError(true);
+    }, []);
+
+    const handleTurnstileExpire = useCallback(() => {
+        setTurnstileToken(null);
+    }, []);
+
+    const resetTurnstile = () => {
+        setTurnstileToken(null);
+        turnstileKey.current += 1;
+    };
+
+    const verifyTurnstile = async (token: string): Promise<boolean> => {
+        try {
+            const { data, error } = await supabase.functions.invoke("verify-turnstile", {
+                body: { token }
+            });
+
+            if (error) {
+                console.error("Turnstile verification error:", error);
+                return false;
+            }
+
+            return data?.success === true;
+        } catch (error) {
+            console.error("Turnstile verification error:", error);
+            return false;
+        }
+    };
 
     useEffect(() => {
         const checkAdminAndMfa = async () => {
@@ -103,7 +167,30 @@ const AdminLogin = () => {
             return;
         }
 
+        if (!turnstileToken) {
+            toast({
+                title: "Verificação necessária",
+                description: "Por favor, complete a verificação de segurança.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         setLoading(true);
+
+        // Verify Turnstile token server-side
+        const isValid = await verifyTurnstile(turnstileToken);
+
+        if (!isValid) {
+            toast({
+                title: "Erro de verificação",
+                description: "A verificação de segurança falhou. Tente novamente.",
+                variant: "destructive",
+            });
+            resetTurnstile();
+            setLoading(false);
+            return;
+        }
 
         const { error } = await supabase.auth.signInWithPassword({
             email: email.trim(),
@@ -116,6 +203,7 @@ const AdminLogin = () => {
                 description: error.message,
                 variant: "destructive",
             });
+            resetTurnstile();
             setLoading(false);
         }
         // Navigation will be handled by the useEffect above
@@ -181,7 +269,26 @@ const AdminLogin = () => {
                                 <p className="text-sm text-destructive">{errors.password}</p>
                             )}
                         </div>
-                        <Button type="submit" className="w-full" disabled={loading}>
+
+                        {turnstileSiteKey && (
+                            <div className="flex justify-center">
+                                <Turnstile
+                                    key={turnstileKey.current}
+                                    siteKey={turnstileSiteKey}
+                                    onVerify={handleTurnstileVerify}
+                                    onError={handleTurnstileError}
+                                    onExpire={handleTurnstileExpire}
+                                />
+                            </div>
+                        )}
+
+                        {turnstileError && (
+                            <p className="text-sm text-destructive text-center">
+                                Erro na verificação. Recarregue a página.
+                            </p>
+                        )}
+
+                        <Button type="submit" className="w-full" disabled={loading || !turnstileToken}>
                             {loading ? (
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             ) : (
