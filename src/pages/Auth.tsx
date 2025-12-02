@@ -266,8 +266,7 @@ const Auth = () => {
             <img 
               src={evenIcon} 
               alt="Even Icon" 
-              className="w-10 h-10 mx-auto mb-3 object-contain" 
-              style={{ animation: 'spin 8s linear infinite' }}
+              className="w-10 h-10 mx-auto mb-3 object-contain animate-pulse" 
             />
             <p className="text-sm text-white/50">
               Construído com excelência pela{" "}
