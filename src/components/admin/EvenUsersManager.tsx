@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { 
-  Plus, 
   Loader2, 
   RefreshCw, 
   Users,
@@ -18,26 +17,29 @@ import {
   Shield,
   KeyRound,
   UserPlus,
-  User
+  User,
+  Trash2,
+  Key
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-interface EvenUser {
-  id: string;
+interface StaffUser {
+  user_id: string;
   email: string;
   full_name: string | null;
   phone: string | null;
   mfa_enabled: boolean;
   created_at: string;
-  has_token: boolean;
+  has_active_token: boolean;
 }
 
 export function EvenUsersManager() {
-  const [users, setUsers] = useState<EvenUser[]>([]);
+  const [users, setUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   // Form state
   const [email, setEmail] = useState('');
@@ -48,58 +50,20 @@ export function EvenUsersManager() {
   const fetchUsers = async () => {
     setLoading(true);
     
-    // Get all staff tokens to identify Even users
-    const { data: tokensData, error: tokensError } = await supabase.rpc('get_staff_tokens');
+    const { data, error } = await supabase.rpc('get_staff_users');
     
-    if (tokensError) {
-      console.error('Error fetching tokens:', tokensError);
+    if (error) {
+      console.error('Error fetching staff users:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os usuários.',
         variant: 'destructive',
       });
-      setLoading(false);
-      return;
-    }
-
-    // Get unique user IDs from tokens
-    const userIds = [...new Set((tokensData || []).map((t: any) => t.user_id))];
-    
-    if (userIds.length === 0) {
       setUsers([]);
-      setLoading(false);
-      return;
+    } else {
+      setUsers(data || []);
     }
-
-    // Fetch profiles for these users
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, full_name, phone, mfa_enabled, created_at')
-      .in('id', userIds);
-
-    if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
-    }
-
-    // Build user list with email from tokens data
-    const usersMap = new Map<string, EvenUser>();
     
-    (tokensData || []).forEach((token: any) => {
-      if (!usersMap.has(token.user_id)) {
-        const profile = profilesData?.find(p => p.id === token.user_id);
-        usersMap.set(token.user_id, {
-          id: token.user_id,
-          email: token.user_email,
-          full_name: profile?.full_name || null,
-          phone: profile?.phone || null,
-          mfa_enabled: profile?.mfa_enabled || false,
-          created_at: profile?.created_at || token.created_at,
-          has_token: true
-        });
-      }
-    });
-
-    setUsers(Array.from(usersMap.values()));
     setLoading(false);
   };
 
@@ -133,7 +97,8 @@ export function EvenUsersManager() {
         user_email: email.trim(),
         user_password: password,
         user_full_name: fullName.trim() || null,
-        user_phone: phone.trim() || null
+        user_phone: phone.trim() || null,
+        assign_staff: true
       });
 
       if (error) {
@@ -148,8 +113,8 @@ export function EvenUsersManager() {
       }
 
       toast({
-        title: 'Usuário criado',
-        description: `Usuário ${email} criado com sucesso. Agora crie um token de acesso para ele.`,
+        title: 'Usuário staff criado',
+        description: `Usuário ${email} criado com role staff. Agora crie um token de acesso para ele.`,
       });
 
       // Reset form
@@ -171,7 +136,46 @@ export function EvenUsersManager() {
     setSaving(false);
   };
 
-  const getTimeAgo = (dateStr: string) => {
+  const handleRemoveStaffRole = async (user: StaffUser) => {
+    if (!confirm(`Tem certeza que deseja remover o acesso staff de "${user.email}"? Os tokens de acesso serão desativados.`)) {
+      return;
+    }
+
+    setRemovingUserId(user.user_id);
+
+    try {
+      const { error } = await supabase.rpc('remove_staff_role', {
+        target_user_id: user.user_id
+      });
+
+      if (error) {
+        console.error('Error removing staff role:', error);
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível remover o acesso staff.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Acesso removido',
+          description: `O acesso staff de ${user.email} foi removido.`,
+        });
+        fetchUsers();
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      toast({
+        title: 'Erro',
+        description: 'Ocorreu um erro ao remover o acesso.',
+        variant: 'destructive',
+      });
+    }
+
+    setRemovingUserId(null);
+  };
+
+  const getTimeAgo = (dateStr: string | null) => {
+    if (!dateStr) return '-';
     return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: ptBR });
   };
 
@@ -181,10 +185,10 @@ export function EvenUsersManager() {
         <div>
           <CardTitle className="text-2xl flex items-center gap-2">
             <Users className="h-6 w-6" />
-            Usuários Even
+            Usuários Even (Staff)
           </CardTitle>
           <CardDescription>
-            Gerencie os usuários da Even que podem acessar monitores de clientes.
+            Gerencie os usuários da Even com role staff que podem acessar monitores de clientes.
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -203,14 +207,14 @@ export function EvenUsersManager() {
             <DialogTrigger asChild>
               <Button>
                 <UserPlus className="h-4 w-4 mr-2" />
-                Novo Usuário
+                Novo Staff
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Criar Usuário Even</DialogTitle>
+                <DialogTitle>Criar Usuário Staff</DialogTitle>
                 <DialogDescription>
-                  Crie um novo usuário que poderá acessar monitores de clientes usando tokens de acesso.
+                  Crie um novo usuário staff da Even que poderá acessar monitores de clientes.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -268,8 +272,14 @@ export function EvenUsersManager() {
                   />
                 </div>
 
-                <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
-                  <p>Após criar o usuário, você precisará criar um <strong>Token de Acesso</strong> na aba "Tokens Even" para que ele possa acessar os monitores.</p>
+                <div className="p-3 bg-primary/10 rounded-lg text-sm">
+                  <div className="flex items-center gap-2 font-medium text-primary mb-1">
+                    <Shield className="h-4 w-4" />
+                    Role Staff
+                  </div>
+                  <p className="text-muted-foreground">
+                    O usuário será criado com role <strong>staff</strong>. Após criar, vá na aba "Tokens Even" para gerar um token de acesso.
+                  </p>
                 </div>
               </div>
               <DialogFooter>
@@ -278,7 +288,7 @@ export function EvenUsersManager() {
                 </Button>
                 <Button onClick={handleCreateUser} disabled={saving || !email.trim() || !password.trim()}>
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Criar Usuário
+                  Criar Staff
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -293,8 +303,8 @@ export function EvenUsersManager() {
         ) : users.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p>Nenhum usuário Even com token de acesso.</p>
-            <p className="text-sm">Crie um usuário e depois um token de acesso para ele.</p>
+            <p>Nenhum usuário staff cadastrado.</p>
+            <p className="text-sm">Clique em "Novo Staff" para criar um usuário.</p>
           </div>
         ) : (
           <Table>
@@ -303,19 +313,24 @@ export function EvenUsersManager() {
                 <TableHead>Usuário</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefone</TableHead>
+                <TableHead>Token Ativo</TableHead>
                 <TableHead>MFA</TableHead>
                 <TableHead>Criado</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.user_id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                         <User className="h-4 w-4 text-primary" />
                       </div>
-                      <span className="font-medium">{user.full_name || '-'}</span>
+                      <div>
+                        <span className="font-medium">{user.full_name || '-'}</span>
+                        <Badge variant="secondary" className="ml-2 text-xs">staff</Badge>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -325,6 +340,18 @@ export function EvenUsersManager() {
                     <span className="text-sm text-muted-foreground">
                       {user.phone || '-'}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    {user.has_active_token ? (
+                      <Badge className="bg-green-500/10 text-green-600">
+                        <Key className="h-3 w-3 mr-1" />
+                        Ativo
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Sem token
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     {user.mfa_enabled ? (
@@ -340,6 +367,21 @@ export function EvenUsersManager() {
                     <span className="text-sm text-muted-foreground">
                       {getTimeAgo(user.created_at)}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleRemoveStaffRole(user)}
+                      disabled={removingUserId === user.user_id}
+                    >
+                      {removingUserId === user.user_id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
