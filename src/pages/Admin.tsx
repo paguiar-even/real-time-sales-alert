@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
-import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil } from 'lucide-react';
+import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import evenLogo from '@/assets/even-logo.png';
 
 interface Tenant {
@@ -42,14 +43,28 @@ interface SearchedUser {
   created_at: string;
 }
 
+interface AuditLog {
+  id: string;
+  tenant_id: string | null;
+  tenant_name: string;
+  action: string;
+  changed_by: string | null;
+  changed_by_email: string | null;
+  old_values: any;
+  new_values: any;
+  created_at: string;
+}
+
 const Admin = () => {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [userTenants, setUserTenants] = useState<UserTenant[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loadingTenants, setLoadingTenants] = useState(true);
   const [loadingUserTenants, setLoadingUserTenants] = useState(true);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -97,6 +112,7 @@ const Admin = () => {
     if (isAdmin) {
       fetchTenants();
       fetchUserTenants();
+      fetchAuditLogs();
     }
   }, [isAdmin]);
 
@@ -118,6 +134,46 @@ const Admin = () => {
       setTenants(data || []);
     }
     setLoadingTenants(false);
+  };
+
+  const fetchAuditLogs = async () => {
+    setLoadingAuditLogs(true);
+    const { data, error } = await supabase
+      .from('tenant_audit_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error('Error fetching audit logs:', error);
+    } else {
+      setAuditLogs(data || []);
+    }
+    setLoadingAuditLogs(false);
+  };
+
+  const logAuditEntry = async (
+    tenantId: string | null,
+    tenantName: string,
+    action: string,
+    oldValues?: Record<string, any> | null,
+    newValues?: Record<string, any> | null
+  ) => {
+    try {
+      await supabase.from('tenant_audit_log').insert({
+        tenant_id: tenantId,
+        tenant_name: tenantName,
+        action,
+        changed_by: user?.id,
+        changed_by_email: user?.email,
+        old_values: oldValues || null,
+        new_values: newValues || null,
+      });
+      // Refresh audit logs
+      fetchAuditLogs();
+    } catch (error) {
+      console.error('Error logging audit entry:', error);
+    }
   };
 
   const fetchUserTenants = async () => {
@@ -173,13 +229,15 @@ const Admin = () => {
     setSaving(true);
     const domains = emailDomains.split(',').map(d => d.trim().toLowerCase());
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('tenants')
       .insert({
         name,
         slug: slug.toLowerCase(),
         email_domains: domains,
-      });
+      })
+      .select()
+      .single();
 
     if (error) {
       console.error('Error creating tenant:', error);
@@ -189,6 +247,11 @@ const Admin = () => {
         variant: 'destructive',
       });
     } else {
+      await logAuditEntry(data.id, name, 'created', null, {
+        name,
+        slug: slug.toLowerCase(),
+        email_domains: domains,
+      });
       toast({
         title: 'Sucesso',
         description: 'Cliente criado com sucesso.',
@@ -203,9 +266,10 @@ const Admin = () => {
   };
 
   const handleToggleActive = async (tenant: Tenant) => {
+    const newStatus = !tenant.is_active;
     const { error } = await supabase
       .from('tenants')
-      .update({ is_active: !tenant.is_active })
+      .update({ is_active: newStatus })
       .eq('id', tenant.id);
 
     if (error) {
@@ -216,14 +280,21 @@ const Admin = () => {
         variant: 'destructive',
       });
     } else {
+      await logAuditEntry(
+        tenant.id,
+        tenant.name,
+        newStatus ? 'activated' : 'deactivated',
+        { is_active: tenant.is_active },
+        { is_active: newStatus }
+      );
       setTenants(prev =>
         prev.map(t =>
-          t.id === tenant.id ? { ...t, is_active: !t.is_active } : t
+          t.id === tenant.id ? { ...t, is_active: newStatus } : t
         )
       );
       toast({
         title: 'Atualizado',
-        description: `${tenant.name} foi ${!tenant.is_active ? 'ativado' : 'desativado'}.`,
+        description: `${tenant.name} foi ${newStatus ? 'ativado' : 'desativado'}.`,
       });
     }
   };
@@ -232,6 +303,14 @@ const Admin = () => {
     if (!confirm(`Tem certeza que deseja excluir "${tenant.name}"?`)) {
       return;
     }
+
+    // Log before delete since tenant_id will be null after
+    await logAuditEntry(null, tenant.name, 'deleted', {
+      name: tenant.name,
+      slug: tenant.slug,
+      email_domains: tenant.email_domains,
+      is_active: tenant.is_active,
+    }, null);
 
     const { error } = await supabase
       .from('tenants')
@@ -292,6 +371,21 @@ const Admin = () => {
         variant: 'destructive',
       });
     } else {
+      await logAuditEntry(
+        editingTenant.id,
+        editingTenant.name,
+        'updated',
+        {
+          name: editingTenant.name,
+          slug: editingTenant.slug,
+          email_domains: editingTenant.email_domains,
+        },
+        {
+          name: editName,
+          slug: editSlug.toLowerCase(),
+          email_domains: domains,
+        }
+      );
       toast({
         title: 'Sucesso',
         description: 'Cliente atualizado com sucesso.',
@@ -385,6 +479,14 @@ const Admin = () => {
         )
       );
 
+      await logAuditEntry(
+        selectedTenantForLogo.id,
+        selectedTenantForLogo.name,
+        'logo_updated',
+        { logo_url: selectedTenantForLogo.logo_url },
+        { logo_url: urlData.publicUrl }
+      );
+
       toast({
         title: 'Logo atualizado',
         description: `Logo de ${selectedTenantForLogo.name} foi atualizado com sucesso.`,
@@ -430,6 +532,14 @@ const Admin = () => {
         prev.map(t =>
           t.id === tenant.id ? { ...t, logo_url: null } : t
         )
+      );
+
+      await logAuditEntry(
+        tenant.id,
+        tenant.name,
+        'logo_removed',
+        { logo_url: tenant.logo_url },
+        { logo_url: null }
       );
 
       toast({
@@ -615,6 +725,10 @@ const Admin = () => {
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Usuários
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Histórico
             </TabsTrigger>
           </TabsList>
 
@@ -1006,6 +1120,116 @@ const Admin = () => {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Audit History Tab */}
+          <TabsContent value="audit">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">Histórico de Alterações</CardTitle>
+                <CardDescription>
+                  Registro de todas as alterações realizadas nos clientes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingAuditLogs ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhuma alteração registrada.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data/Hora</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Ação</TableHead>
+                        <TableHead>Usuário</TableHead>
+                        <TableHead>Detalhes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {auditLogs.map((log) => (
+                        <TableRow key={log.id}>
+                          <TableCell className="text-muted-foreground whitespace-nowrap">
+                            {new Date(log.created_at).toLocaleString('pt-BR')}
+                          </TableCell>
+                          <TableCell className="font-medium">{log.tenant_name}</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              log.action === 'created' ? 'default' :
+                              log.action === 'deleted' ? 'destructive' :
+                              log.action === 'activated' ? 'default' :
+                              log.action === 'deactivated' ? 'secondary' :
+                              'outline'
+                            }>
+                              {log.action === 'created' && 'Criado'}
+                              {log.action === 'updated' && 'Atualizado'}
+                              {log.action === 'deleted' && 'Excluído'}
+                              {log.action === 'activated' && 'Ativado'}
+                              {log.action === 'deactivated' && 'Desativado'}
+                              {log.action === 'logo_updated' && 'Logo atualizado'}
+                              {log.action === 'logo_removed' && 'Logo removido'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {log.changed_by_email || 'Sistema'}
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            {log.old_values && log.new_values && (
+                              <div className="text-xs text-muted-foreground">
+                                {Object.keys(log.new_values).map((key) => {
+                                  const oldVal = log.old_values?.[key];
+                                  const newVal = log.new_values?.[key];
+                                  if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+                                    return (
+                                      <div key={key} className="truncate">
+                                        <span className="font-medium">{key}:</span>{' '}
+                                        <span className="line-through text-red-500">
+                                          {Array.isArray(oldVal) ? oldVal.join(', ') : String(oldVal || '-')}
+                                        </span>
+                                        {' → '}
+                                        <span className="text-green-600">
+                                          {Array.isArray(newVal) ? newVal.join(', ') : String(newVal || '-')}
+                                        </span>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            )}
+                            {log.action === 'created' && log.new_values && (
+                              <div className="text-xs text-muted-foreground">
+                                {Object.entries(log.new_values).map(([key, val]) => (
+                                  <div key={key} className="truncate">
+                                    <span className="font-medium">{key}:</span>{' '}
+                                    {Array.isArray(val) ? val.join(', ') : String(val)}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {log.action === 'deleted' && log.old_values && (
+                              <div className="text-xs text-muted-foreground line-through text-red-500">
+                                {Object.entries(log.old_values).map(([key, val]) => (
+                                  <div key={key} className="truncate">
+                                    <span className="font-medium">{key}:</span>{' '}
+                                    {Array.isArray(val) ? val.join(', ') : String(val)}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}

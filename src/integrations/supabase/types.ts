@@ -46,6 +46,50 @@ export type Database = {
           },
         ]
       }
+      tenant_audit_log: {
+        Row: {
+          action: string
+          changed_by: string | null
+          changed_by_email: string | null
+          created_at: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          tenant_id: string | null
+          tenant_name: string
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          tenant_id?: string | null
+          tenant_name: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          tenant_id?: string | null
+          tenant_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           created_at: string
