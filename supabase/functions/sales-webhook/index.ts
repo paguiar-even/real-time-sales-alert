@@ -8,7 +8,6 @@ const corsHeaders = {
 interface SalesWebhookPayload {
   vendas_minuto: number;
   vendas_status?: 'OK' | 'ALERTA_ZERO';
-  tenant_slug?: string;
 }
 
 Deno.serve(async (req) => {
@@ -30,6 +29,20 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Extract tenant slug from URL path
+    // URL format: /sales-webhook or /sales-webhook/tenant-slug
+    const url = new URL(req.url);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    
+    // pathParts will be like ['functions', 'v1', 'sales-webhook', 'tenant-slug'] or ['sales-webhook', 'tenant-slug']
+    // Find index of 'sales-webhook' and get the next part
+    const webhookIndex = pathParts.findIndex(p => p === 'sales-webhook');
+    const tenantSlug = webhookIndex >= 0 && pathParts[webhookIndex + 1] 
+      ? pathParts[webhookIndex + 1] 
+      : null;
+    
+    console.log('Parsed URL path:', { pathParts, tenantSlug });
+
     // Validate webhook token
     const webhookToken = Deno.env.get('SALES_WEBHOOK_TOKEN');
     const providedToken = req.headers.get('x-webhook-token') || req.headers.get('authorization')?.replace('Bearer ', '');
@@ -96,13 +109,15 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Lookup tenant_id if tenant_slug is provided
+    // Lookup tenant_id if tenant slug is in URL or body
+    const slugToUse = tenantSlug || rawBody.tenant_slug;
     let tenant_id: string | null = null;
-    if (rawBody.tenant_slug) {
+    
+    if (slugToUse) {
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
-        .select('id')
-        .eq('slug', rawBody.tenant_slug)
+        .select('id, name')
+        .eq('slug', slugToUse)
         .eq('is_active', true)
         .maybeSingle();
 
@@ -110,13 +125,13 @@ Deno.serve(async (req) => {
         console.error('Error looking up tenant:', tenantError);
       } else if (tenantData) {
         tenant_id = tenantData.id;
-        console.log(`Found tenant for slug "${rawBody.tenant_slug}": ${tenant_id}`);
+        console.log(`Found tenant for slug "${slugToUse}": ${tenantData.name} (${tenant_id})`);
       } else {
-        console.log(`No tenant found for slug "${rawBody.tenant_slug}"`);
+        console.log(`No tenant found for slug "${slugToUse}"`);
         return new Response(
-          JSON.stringify({ error: `Tenant not found: ${rawBody.tenant_slug}` }),
+          JSON.stringify({ error: `Tenant not found: ${slugToUse}` }),
           { 
-            status: 400, 
+            status: 404, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
@@ -156,6 +171,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: 'Sales status recorded successfully',
+        tenant_slug: slugToUse || null,
         data 
       }),
       { 
