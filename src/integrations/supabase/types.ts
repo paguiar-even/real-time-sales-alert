@@ -315,28 +315,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_create_user:
-        | {
-            Args: {
-              assign_staff?: boolean
-              user_email: string
-              user_full_name?: string
-              user_password: string
-              user_phone?: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              assign_admin?: boolean
-              assign_staff?: boolean
-              user_email: string
-              user_full_name?: string
-              user_password: string
-              user_phone?: string
-            }
-            Returns: string
-          }
+      admin_create_user: {
+        Args: {
+          assign_admin?: boolean
+          assign_staff?: boolean
+          user_email: string
+          user_full_name?: string
+          user_password: string
+          user_phone?: string
+        }
+        Returns: string
+      }
       admin_reset_user_mfa: {
         Args: { target_user_id: string }
         Returns: boolean
