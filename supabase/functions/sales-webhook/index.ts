@@ -56,14 +56,18 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const body: SalesWebhookPayload = await req.json();
-    console.log('Received webhook payload:', body);
+    const rawBody = await req.json();
+    console.log('Received webhook payload:', rawBody);
 
-    // Validate payload
-    if (typeof body.vendas_minuto !== 'number') {
-      console.log('Validation error: vendas_minuto must be a number');
+    // Parse vendas_minuto (accept both string and number)
+    const vendas_minuto = typeof rawBody.vendas_minuto === 'string' 
+      ? parseInt(rawBody.vendas_minuto, 10) 
+      : rawBody.vendas_minuto;
+
+    if (isNaN(vendas_minuto) || vendas_minuto === null || vendas_minuto === undefined) {
+      console.log('Validation error: vendas_minuto must be a valid number');
       return new Response(
-        JSON.stringify({ error: 'vendas_minuto must be a number' }),
+        JSON.stringify({ error: 'vendas_minuto must be a valid number' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -71,7 +75,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!['OK', 'ALERTA_ZERO'].includes(body.vendas_status)) {
+    // Determine status automatically if not provided
+    const vendas_status = rawBody.vendas_status || (vendas_minuto === 0 ? 'ALERTA_ZERO' : 'OK');
+
+    if (!['OK', 'ALERTA_ZERO'].includes(vendas_status)) {
       console.log('Validation error: invalid vendas_status');
       return new Response(
         JSON.stringify({ error: 'vendas_status must be "OK" or "ALERTA_ZERO"' }),
@@ -81,6 +88,8 @@ Deno.serve(async (req) => {
         }
       );
     }
+
+    const body = { vendas_minuto, vendas_status };
 
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
