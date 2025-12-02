@@ -117,6 +117,39 @@ export type Database = {
           },
         ]
       }
+      staff_access_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          name: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name: string
+          token?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tenant_audit_log: {
         Row: {
           action: string
@@ -268,6 +301,20 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      get_staff_tokens: {
+        Args: never
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          last_used_at: string
+          name: string
+          token: string
+          user_email: string
+          user_id: string
+        }[]
+      }
       get_tenant_access_logs: {
         Args: { limit_count?: number; target_tenant_id: string }
         Returns: {
@@ -312,6 +359,16 @@ export type Database = {
           created_at: string
           email: string
           id: string
+        }[]
+      }
+      validate_staff_token: {
+        Args: { p_tenant_slug: string; p_token: string }
+        Returns: {
+          is_valid: boolean
+          tenant_id: string
+          tenant_logo_url: string
+          tenant_name: string
+          user_email: string
         }[]
       }
     }

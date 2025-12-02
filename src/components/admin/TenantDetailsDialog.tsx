@@ -276,6 +276,33 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
 
           {/* Config Tab */}
           <TabsContent value="config" className="space-y-4 mt-4">
+            {/* Tenant Monitor URL */}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Link className="h-4 w-4" />
+                  URL do Monitor (Acesso Even)
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Use esta URL junto com um token de acesso Even para visualizar o monitor deste tenant
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  <code className="flex-1 bg-background px-3 py-2 rounded text-sm break-all border">
+                    {`${window.location.origin}/t/${tenant.slug}?token=SEU_TOKEN`}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(`${window.location.origin}/t/${tenant.slug}?token=`, 'Tenant URL')}
+                  >
+                    {copiedField === 'Tenant URL' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Webhook URL */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
