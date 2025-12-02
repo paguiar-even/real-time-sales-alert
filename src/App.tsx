@@ -15,6 +15,7 @@ import AdminLogin from "./pages/AdminLogin";
 import MfaEnroll from "./pages/MfaEnroll";
 import MfaVerify from "./pages/MfaVerify";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/mfa/enroll" element={<MfaEnroll />} />
               <Route path="/mfa/verify" element={<MfaVerify />} />
