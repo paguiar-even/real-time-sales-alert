@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          tenant_id: string | null
+          tenant_name: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          tenant_id?: string | null
+          tenant_name?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          tenant_id?: string | null
+          tenant_name?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -224,6 +268,18 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      get_tenant_access_logs: {
+        Args: { limit_count?: number; target_tenant_id: string }
+        Returns: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: string
+          user_agent: string
+          user_email: string
+          user_id: string
+        }[]
+      }
       get_tenant_users: {
         Args: { target_tenant_id: string }
         Returns: {
@@ -245,6 +301,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_user_access: {
+        Args: { p_action?: string; p_tenant_id: string; p_tenant_name: string }
+        Returns: string
       }
       search_users_by_email: {
         Args: { search_email: string }
