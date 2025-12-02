@@ -409,6 +409,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_tenant_info_for_user: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          email_domains: string[]
+          id: string
+          is_active: boolean
+          logo_url: string
+          name: string
+          slug: string
+        }[]
+      }
       get_tenant_users: {
         Args: { target_tenant_id: string }
         Returns: {
@@ -421,6 +432,10 @@ export type Database = {
           user_id: string
           user_tenant_id: string
         }[]
+      }
+      get_tenant_webhook_token: {
+        Args: { p_tenant_id: string }
+        Returns: string
       }
       get_tenants_for_staff: {
         Args: { p_token: string }
