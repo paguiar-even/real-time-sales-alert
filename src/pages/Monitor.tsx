@@ -233,6 +233,19 @@ const Monitor = () => {
                                         lastUpdate={currentStatus.created_at}
                                         isFullscreen={true}
                                     />
+                                    
+                                    {/* Status Message */}
+                                    {currentStatus.vendas_status === "OK" && (
+                                        <div className="flex items-center justify-center gap-3 py-3 px-5 rounded-xl bg-green-500/15 border border-green-500/30 mt-2">
+                                            <div className="relative flex items-center justify-center">
+                                                <span className="absolute inline-flex h-3 w-3 rounded-full bg-green-500 opacity-75 animate-ping" />
+                                                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+                                            </div>
+                                            <span className="text-green-400 font-medium text-lg">
+                                                Por aqui tá tudo certo! Tá tudo Even!
+                                            </span>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 <div className="flex flex-col items-center justify-center p-12 rounded-3xl border-2 border-dashed border-white/20 bg-white/5">
@@ -248,8 +261,12 @@ const Monitor = () => {
                         </section>
                     </main>
 
-                    <footer className="text-center py-4">
-                        <span className="text-white/30 text-sm">
+                    <footer className="text-center py-4 px-8 space-y-3">
+                        <p className="text-white/60 text-sm leading-relaxed max-w-2xl mx-auto italic">
+                            "Todo aquele, pois, que ouve estas minhas palavras e as pratica será comparado a um homem prudente que construiu a sua casa sobre a rocha."
+                            <span className="text-white/40 not-italic ml-2">— Mateus 7:24</span>
+                        </p>
+                        <span className="text-white/30 text-sm block">
                             Pressione ESC para sair do modo tela cheia
                         </span>
                     </footer>
