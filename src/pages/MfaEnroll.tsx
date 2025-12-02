@@ -36,6 +36,18 @@ const MfaEnroll = () => {
   const startEnrollment = async () => {
     setEnrolling(true);
     try {
+      // First, check for existing unverified factors and remove them
+      const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      
+      if (factorsData?.totp) {
+        for (const factor of factorsData.totp) {
+          if (factor.status !== 'verified') {
+            await supabase.auth.mfa.unenroll({ factorId: factor.id });
+          }
+        }
+      }
+
+      // Now enroll a new factor
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
         friendlyName: 'Google Authenticator',
