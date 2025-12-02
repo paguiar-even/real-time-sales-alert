@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Monitor from "./pages/Monitor";
 import TenantMonitor from "./pages/TenantMonitor";
+import StaffTenantsList from "./pages/StaffTenantsList";
 import Admin from "./pages/Admin";
 import AdminLogin from "./pages/AdminLogin";
 import MfaEnroll from "./pages/MfaEnroll";
@@ -33,7 +34,8 @@ const App = () => (
               <Route path="/mfa/enroll" element={<MfaEnroll />} />
               <Route path="/mfa/verify" element={<MfaVerify />} />
               <Route path="/t/:slug" element={<TenantMonitor />} />
-              <Route 
+              <Route path="/tenants" element={<StaffTenantsList />} />
+              <Route
                 path="/monitor" 
                 element={
                   <ProtectedRoute>
