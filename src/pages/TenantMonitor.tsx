@@ -52,38 +52,47 @@ const TenantMonitor = () => {
     // Validate token
     useEffect(() => {
         const validateToken = async () => {
-            if (!token || !slug) {
+            // Trim and validate token and slug
+            const trimmedToken = token?.trim();
+            const trimmedSlug = slug?.trim();
+
+            if (!trimmedToken || !trimmedSlug) {
                 setError("Token ou slug não fornecido");
                 setValidating(false);
                 return;
             }
 
-            const { data, error } = await supabase.rpc("validate_staff_token", {
-                p_token: token,
-                p_tenant_slug: slug
-            });
-
-            if (error) {
-                console.error("Error validating token:", error);
-                setError("Erro ao validar token");
-                setValidating(false);
-                return;
-            }
-
-            if (data && data.length > 0 && data[0].is_valid) {
-                setTenantInfo({
-                    tenant_id: data[0].tenant_id,
-                    tenant_name: data[0].tenant_name,
-                    tenant_logo_url: data[0].tenant_logo_url,
-                    user_email: data[0].user_email
+            try {
+                const { data, error } = await supabase.rpc("validate_staff_token", {
+                    p_token: trimmedToken,
+                    p_tenant_slug: trimmedSlug
                 });
-                setIsValid(true);
 
-                // Mark as validated and clean URL
-                setValidated();
-            } else {
-                setError("Token inválido ou expirado");
-                clearToken();
+                if (error) {
+                    console.error("Error validating token:", error);
+                    setError("Erro ao validar token");
+                    setValidating(false);
+                    return;
+                }
+
+                if (data && data.length > 0 && data[0].is_valid) {
+                    setTenantInfo({
+                        tenant_id: data[0].tenant_id,
+                        tenant_name: data[0].tenant_name,
+                        tenant_logo_url: data[0].tenant_logo_url,
+                        user_email: data[0].user_email
+                    });
+                    setIsValid(true);
+
+                    // Mark as validated and clean URL
+                    setValidated();
+                } else {
+                    setError("Token inválido ou expirado");
+                    clearToken();
+                }
+            } catch (err) {
+                console.error("Error in token validation:", err);
+                setError("Erro ao validar token");
             }
 
             setValidating(false);
