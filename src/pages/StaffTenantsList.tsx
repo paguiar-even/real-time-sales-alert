@@ -61,11 +61,11 @@ export default function StaffTenantsList() {
   };
 
   const fetchTenants = async () => {
+    if (!token) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from('tenants')
-      .select('id, name, slug, logo_url, is_active')
-      .order('name');
+    const { data, error } = await supabase.rpc('get_tenants_for_staff', {
+      p_token: token
+    });
 
     if (!error && data) {
       setTenants(data);

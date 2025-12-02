@@ -263,6 +263,19 @@ const TenantMonitor = () => {
             className="mb-8 text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700 -mx-4 px-4 py-6 rounded-2xl"
             style={{ backgroundColor: '#FFB81C' }}
           >
+            {/* Back to list button */}
+            <div className="flex justify-start -mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/tenants?token=${token}`)}
+                className="text-[#00313C] hover:bg-[#00313C]/10"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Ver todos
+              </Button>
+            </div>
+            
             <div className="flex flex-col items-center justify-center gap-4">
               <img 
                 src={displayLogo} 
