@@ -19,7 +19,9 @@ import {
   Trash2,
   Clock,
   User,
-  Search
+  Search,
+  Link,
+  ExternalLink
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -48,6 +50,7 @@ export function StaffTokensManager() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copiedTokenId, setCopiedTokenId] = useState<string | null>(null);
+  const [copiedUrlTokenId, setCopiedUrlTokenId] = useState<string | null>(null);
 
   // Search state
   const [searchEmail, setSearchEmail] = useState('');
@@ -175,6 +178,25 @@ export function StaffTokensManager() {
       toast({
         title: 'Erro',
         description: 'Não foi possível copiar o token.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const copyTenantsUrl = async (token: StaffToken) => {
+    try {
+      const url = `${window.location.origin}/tenants?token=${token.token}`;
+      await navigator.clipboard.writeText(url);
+      setCopiedUrlTokenId(token.id);
+      toast({
+        title: 'URL copiada',
+        description: 'URL da lista de tenants copiada.',
+      });
+      setTimeout(() => setCopiedUrlTokenId(null), 2000);
+    } catch (err) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível copiar a URL.',
         variant: 'destructive',
       });
     }
@@ -376,6 +398,7 @@ export function StaffTokensManager() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Usuário</TableHead>
                 <TableHead>Token</TableHead>
+                <TableHead>URL Tenants</TableHead>
                 <TableHead>Último Uso</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -405,6 +428,21 @@ export function StaffTokensManager() {
                         )}
                       </Button>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyTenantsUrl(token)}
+                      className="gap-1"
+                    >
+                      {copiedUrlTokenId === token.id ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Link className="h-4 w-4" />
+                      )}
+                      Copiar
+                    </Button>
                   </TableCell>
                   <TableCell>
                     {token.last_used_at ? (
