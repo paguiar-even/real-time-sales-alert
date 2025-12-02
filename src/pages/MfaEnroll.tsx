@@ -46,6 +46,7 @@ const MfaEnroll = () => {
     setEnrolling(true);
     try {
       const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      console.log('Existing MFA factors:', factorsData?.totp);
       
       if (factorsData?.totp && factorsData.totp.length > 0) {
         const verifiedFactor = factorsData.totp.find(f => f.status === 'verified');
@@ -57,12 +58,15 @@ const MfaEnroll = () => {
           return;
         }
         
-        // Remove all existing factors (both verified and unverified)
+        // Only try to unenroll VERIFIED factors (unverified cannot be unenrolled)
         for (const factor of factorsData.totp) {
-          try {
-            await supabase.auth.mfa.unenroll({ factorId: factor.id });
-          } catch (unenrollError) {
-            console.log('Error unenrolling factor:', unenrollError);
+          if (factor.status === 'verified') {
+            try {
+              await supabase.auth.mfa.unenroll({ factorId: factor.id });
+              console.log('Successfully unenrolled factor:', factor.id);
+            } catch (unenrollError) {
+              console.log('Error unenrolling factor:', factor.id, unenrollError);
+            }
           }
         }
         
@@ -70,15 +74,22 @@ const MfaEnroll = () => {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // Now enroll a new factor
+      // Use unique name to avoid mfa_factor_name_conflict error
+      const uniqueName = `Authenticator_${Date.now()}`;
+      console.log('Enrolling new MFA factor with name:', uniqueName);
+      
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'Google Authenticator',
+        friendlyName: uniqueName,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('MFA enroll error:', error);
+        throw error;
+      }
 
       if (data) {
+        console.log('MFA enrollment successful, factor ID:', data.id);
         setQrCode(data.totp.qr_code);
         setSecret(data.totp.secret);
         setFactorId(data.id);
@@ -89,7 +100,7 @@ const MfaEnroll = () => {
       enrollmentStarted.current = false; // Allow retry on error
       toast({
         title: 'Erro',
-        description: 'Não foi possível iniciar a configuração do 2FA. Tente novamente.',
+        description: `Não foi possível iniciar a configuração do 2FA: ${error.message || 'Tente novamente.'}`,
         variant: 'destructive',
       });
     } finally {
