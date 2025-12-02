@@ -15,12 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
-import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History, Copy, Check, RefreshCw, Key, ExternalLink, LayoutDashboard } from "lucide-react";
+import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History, Copy, Check, RefreshCw, Key, ExternalLink, LayoutDashboard, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TenantDetailsDialog } from "@/components/admin/TenantDetailsDialog";
 import { TenantsDashboard } from "@/components/admin/TenantsDashboard";
 import { StaffTokensManager } from "@/components/admin/StaffTokensManager";
 import { EvenUsersManager } from "@/components/admin/EvenUsersManager";
+import { AdminUsersManager } from "@/components/admin/AdminUsersManager";
 import evenLogo from "@/assets/even-logo.png";
 
 interface Tenant {
@@ -867,7 +868,11 @@ const Admin = () => {
                         </TabsTrigger>
                         <TabsTrigger value="even-users" className="flex items-center gap-2">
                             <UserPlus className="h-4 w-4" />
-                            Usuários Even
+                            Staff Even
+                        </TabsTrigger>
+                        <TabsTrigger value="admins" className="flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            Administradores
                         </TabsTrigger>
                         <TabsTrigger value="audit" className="flex items-center gap-2">
                             <History className="h-4 w-4" />
@@ -1297,6 +1302,11 @@ const Admin = () => {
                     {/* Even Users Tab */}
                     <TabsContent value="even-users">
                         <EvenUsersManager />
+                    </TabsContent>
+
+                    {/* Admin Users Tab */}
+                    <TabsContent value="admins">
+                        <AdminUsersManager />
                     </TabsContent>
 
                     {/* Audit History Tab */}
