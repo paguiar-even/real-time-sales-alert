@@ -11,7 +11,7 @@ import { Helmet } from 'react-helmet-async';
 import evenLogo from '@/assets/even-logo.png';
 import evenIcon from '@/assets/even-icon.png';
 import rowPattern from '@/assets/row-pattern.png';
-import { Loader2, LogIn, UserPlus, ShieldCheck } from 'lucide-react';
+import { Loader2, LogIn, ShieldCheck, KeyRound, ArrowLeft } from 'lucide-react';
 import { Turnstile } from '@/components/Turnstile';
 
 const loginSchema = z.object({
@@ -19,21 +19,16 @@ const loginSchema = z.object({
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
 });
 
-const signupSchema = z.object({
-  fullName: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  phone: z.string().min(10, 'Telefone inválido').optional().or(z.literal('')),
+const emailSchema = z.object({
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
 });
 
 const Auth = () => {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string; phone?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState(false);
@@ -114,8 +109,8 @@ const Auth = () => {
   }, [user, loading, navigate]);
 
   const validateForm = () => {
-    if (isSignUp) {
-      const result = signupSchema.safeParse({ email, password, fullName, phone });
+    if (isForgotPassword) {
+      const result = emailSchema.safeParse({ email });
       if (!result.success) {
         const fieldErrors: typeof errors = {};
         result.error.errors.forEach((err) => {
@@ -159,108 +154,92 @@ const Auth = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+      
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: error.message,
+        });
+      } else {
+        toast({
+          title: 'Email enviado!',
+          description: 'Verifique sua caixa de entrada para redefinir sua senha.',
+        });
+        setIsForgotPassword(false);
+        setEmail('');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (isForgotPassword) {
+      await handleForgotPassword();
+      return;
+    }
+    
     if (!validateForm()) return;
     
-    // Verify Turnstile token (only for login, not signup)
-    if (!isSignUp) {
-      if (!turnstileToken) {
-        toast({
-          variant: 'destructive',
-          title: 'Verificação necessária',
-          description: 'Por favor, complete a verificação de segurança.',
-        });
-        return;
-      }
-      
-      setIsSubmitting(true);
-      
-      // Verify the token with Cloudflare
-      const isValid = await verifyTurnstile(turnstileToken);
-      if (!isValid) {
-        toast({
-          variant: 'destructive',
-          title: 'Verificação falhou',
-          description: 'A verificação de segurança falhou. Por favor, tente novamente.',
-        });
-        resetTurnstile();
-        setIsSubmitting(false);
-        return;
-      }
-    } else {
-      setIsSubmitting(true);
+    // Verify Turnstile token
+    if (!turnstileToken) {
+      toast({
+        variant: 'destructive',
+        title: 'Verificação necessária',
+        description: 'Por favor, complete a verificação de segurança.',
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    // Verify the token with Cloudflare
+    const isValid = await verifyTurnstile(turnstileToken);
+    if (!isValid) {
+      toast({
+        variant: 'destructive',
+        title: 'Verificação falhou',
+        description: 'A verificação de segurança falhou. Por favor, tente novamente.',
+      });
+      resetTurnstile();
+      setIsSubmitting(false);
+      return;
     }
 
     try {
-      if (isSignUp) {
-        const redirectUrl = `${window.location.origin}/`;
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              full_name: fullName,
-            },
-          },
-        });
-
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast({
-              variant: 'destructive',
-              title: 'Erro no cadastro',
-              description: 'Este email já está cadastrado.',
-            });
-          } else {
-            toast({
-              variant: 'destructive',
-              title: 'Erro no cadastro',
-              description: error.message,
-            });
-          }
-        } else {
-          // Update profile with phone if provided
-          if (phone) {
-            const { data: { user: newUser } } = await supabase.auth.getUser();
-            if (newUser) {
-              await supabase
-                .from('profiles')
-                .update({ phone })
-                .eq('id', newUser.id);
-            }
-          }
-          
+      const { error } = await signIn(email, password);
+      if (error) {
+        resetTurnstile();
+        if (error.message.includes('Invalid login credentials')) {
           toast({
-            title: 'Conta criada!',
-            description: 'Configure o 2FA para continuar.',
+            variant: 'destructive',
+            title: 'Erro de login',
+            description: 'Email ou senha incorretos.',
+          });
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Erro de login',
+            description: error.message,
           });
         }
       } else {
-        const { error } = await signIn(email, password);
-        if (error) {
-          resetTurnstile();
-          if (error.message.includes('Invalid login credentials')) {
-            toast({
-              variant: 'destructive',
-              title: 'Erro de login',
-              description: 'Email ou senha incorretos.',
-            });
-          } else {
-            toast({
-              variant: 'destructive',
-              title: 'Erro de login',
-              description: error.message,
-            });
-          }
-        } else {
-          toast({
-            title: 'Login realizado!',
-            description: 'Verificando autenticação...',
-          });
-        }
+        toast({
+          title: 'Login realizado!',
+          description: 'Verificando autenticação...',
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -281,7 +260,7 @@ const Auth = () => {
   return (
     <>
       <Helmet>
-        <title>{isSignUp ? 'Cadastro' : 'Login'} | Monitor de Vendas - Even Tecnologia</title>
+        <title>{isForgotPassword ? 'Recuperar Senha' : 'Login'} | Monitor de Vendas - Even Tecnologia</title>
         <meta name="description" content="Acesse o monitor de vendas em tempo real" />
       </Helmet>
 
@@ -315,75 +294,19 @@ const Auth = () => {
               className="text-2xl font-bold text-center mb-1 font-mono"
               style={{ color: '#00313C' }}
             >
-              Monitor de Vendas
+              {isForgotPassword ? 'Recuperar Senha' : 'Monitor de Vendas'}
             </h1>
             <p 
               className="text-center mb-6 text-sm"
               style={{ color: '#00313C', opacity: 0.7 }}
             >
-              {isSignUp ? 'Crie sua conta para acessar' : 'Entre com suas credenciais'}
+              {isForgotPassword 
+                ? 'Digite seu email para receber o link de recuperação' 
+                : 'Entre com suas credenciais'}
             </p>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {isSignUp && (
-                <>
-                  <div className="space-y-2">
-                    <Label 
-                      htmlFor="fullName" 
-                      className="font-medium"
-                      style={{ color: '#00313C' }}
-                    >
-                      Nome completo
-                    </Label>
-                    <Input
-                      id="fullName"
-                      type="text"
-                      placeholder="Seu nome"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="border-2 focus:ring-2 focus:ring-offset-2"
-                      style={{ 
-                        backgroundColor: 'white',
-                        borderColor: '#00313C',
-                        color: '#00313C'
-                      }}
-                      disabled={isSubmitting}
-                    />
-                    {errors.fullName && (
-                      <p className="text-sm font-medium" style={{ color: '#dc2626' }}>{errors.fullName}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label 
-                      htmlFor="phone" 
-                      className="font-medium"
-                      style={{ color: '#00313C' }}
-                    >
-                      Telefone (opcional)
-                    </Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="(11) 99999-9999"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="border-2 focus:ring-2 focus:ring-offset-2"
-                      style={{ 
-                        backgroundColor: 'white',
-                        borderColor: '#00313C',
-                        color: '#00313C'
-                      }}
-                      disabled={isSubmitting}
-                    />
-                    {errors.phone && (
-                      <p className="text-sm font-medium" style={{ color: '#dc2626' }}>{errors.phone}</p>
-                    )}
-                  </div>
-                </>
-              )}
-
               <div className="space-y-2">
                 <Label 
                   htmlFor="email" 
@@ -411,67 +334,71 @@ const Auth = () => {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label 
-                  htmlFor="password" 
-                  className="font-medium"
-                  style={{ color: '#00313C' }}
-                >
-                  Senha
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="border-2 focus:ring-2 focus:ring-offset-2"
-                  style={{ 
-                    backgroundColor: 'white',
-                    borderColor: '#00313C',
-                    color: '#00313C'
-                  }}
-                  disabled={isSubmitting}
-                />
-                {errors.password && (
-                  <p className="text-sm font-medium" style={{ color: '#dc2626' }}>{errors.password}</p>
-                )}
-              </div>
-
-              {/* Turnstile verification (only for login) */}
-              {!isSignUp && turnstileSiteKey && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ShieldCheck className="h-4 w-4" style={{ color: '#00313C' }} />
-                    <span className="text-sm font-medium" style={{ color: '#00313C' }}>
-                      Verificação de segurança
-                    </span>
-                  </div>
-                  <div 
-                    key={turnstileKey.current}
-                    className="rounded-lg overflow-hidden"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.5)' }}
-                  >
-                    <Turnstile
-                      siteKey={turnstileSiteKey}
-                      onVerify={handleTurnstileVerify}
-                      onError={handleTurnstileError}
-                      onExpire={handleTurnstileExpire}
-                      theme="light"
+              {!isForgotPassword && (
+                <>
+                  <div className="space-y-2">
+                    <Label 
+                      htmlFor="password" 
+                      className="font-medium"
+                      style={{ color: '#00313C' }}
+                    >
+                      Senha
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="border-2 focus:ring-2 focus:ring-offset-2"
+                      style={{ 
+                        backgroundColor: 'white',
+                        borderColor: '#00313C',
+                        color: '#00313C'
+                      }}
+                      disabled={isSubmitting}
                     />
+                    {errors.password && (
+                      <p className="text-sm font-medium" style={{ color: '#dc2626' }}>{errors.password}</p>
+                    )}
                   </div>
-                  {turnstileError && (
-                    <p className="text-sm font-medium" style={{ color: '#dc2626' }}>
-                      Erro na verificação. Recarregue a página e tente novamente.
-                    </p>
+
+                  {/* Turnstile verification */}
+                  {turnstileSiteKey && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ShieldCheck className="h-4 w-4" style={{ color: '#00313C' }} />
+                        <span className="text-sm font-medium" style={{ color: '#00313C' }}>
+                          Verificação de segurança
+                        </span>
+                      </div>
+                      <div 
+                        key={turnstileKey.current}
+                        className="rounded-lg overflow-hidden"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.5)' }}
+                      >
+                        <Turnstile
+                          siteKey={turnstileSiteKey}
+                          onVerify={handleTurnstileVerify}
+                          onError={handleTurnstileError}
+                          onExpire={handleTurnstileExpire}
+                          theme="light"
+                        />
+                      </div>
+                      {turnstileError && (
+                        <p className="text-sm font-medium" style={{ color: '#dc2626' }}>
+                          Erro na verificação. Recarregue a página e tente novamente.
+                        </p>
+                      )}
+                      {turnstileToken && (
+                        <p className="text-sm flex items-center gap-1" style={{ color: '#16a34a' }}>
+                          <ShieldCheck className="h-3 w-3" />
+                          Verificação concluída
+                        </p>
+                      )}
+                    </div>
                   )}
-                  {turnstileToken && (
-                    <p className="text-sm flex items-center gap-1" style={{ color: '#16a34a' }}>
-                      <ShieldCheck className="h-3 w-3" />
-                      Verificação concluída
-                    </p>
-                  )}
-                </div>
+                </>
               )}
 
               <Button
@@ -482,32 +409,40 @@ const Auth = () => {
                   borderColor: '#00313C',
                   color: '#FFB81C'
                 }}
-                disabled={isSubmitting || (!isSignUp && turnstileSiteKey && !turnstileToken)}
+                disabled={isSubmitting || (!isForgotPassword && turnstileSiteKey && !turnstileToken)}
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : isSignUp ? (
-                  <UserPlus className="h-4 w-4 mr-2" />
+                ) : isForgotPassword ? (
+                  <KeyRound className="h-4 w-4 mr-2" />
                 ) : (
                   <LogIn className="h-4 w-4 mr-2" />
                 )}
-                {isSignUp ? 'Criar conta' : 'Entrar'}
+                {isForgotPassword ? 'Enviar link' : 'Entrar'}
               </Button>
             </form>
 
-            {/* Toggle */}
+            {/* Forgot Password / Back to Login */}
             <div className="mt-6 text-center">
               <button
                 type="button"
                 onClick={() => {
-                  setIsSignUp(!isSignUp);
+                  setIsForgotPassword(!isForgotPassword);
                   setErrors({});
+                  setPassword('');
                   resetTurnstile();
                 }}
-                className="text-sm font-medium underline hover:no-underline"
+                className="text-sm font-medium underline hover:no-underline flex items-center justify-center gap-1 mx-auto"
                 style={{ color: '#00313C' }}
               >
-                {isSignUp ? 'Já tem conta? Entrar' : 'Não tem conta? Criar'}
+                {isForgotPassword ? (
+                  <>
+                    <ArrowLeft className="h-3 w-3" />
+                    Voltar ao login
+                  </>
+                ) : (
+                  'Esqueci minha senha'
+                )}
               </button>
             </div>
 
@@ -517,8 +452,8 @@ const Auth = () => {
                 className="text-xs"
                 style={{ color: '#00313C', opacity: 0.6 }}
               >
-                {isSignUp 
-                  ? 'Após o cadastro, você precisará configurar o 2FA.' 
+                {isForgotPassword 
+                  ? 'Um email será enviado com instruções para redefinir sua senha.' 
                   : 'Não possui acesso? Entre em contato com a Even Tecnologia.'}
               </p>
             </div>
