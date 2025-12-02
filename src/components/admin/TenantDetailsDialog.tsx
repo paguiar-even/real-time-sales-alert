@@ -313,15 +313,37 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
 
                     {/* Config Tab */}
                     <TabsContent value="config" className="space-y-4 mt-4">
+                        {/* Admin Direct Access */}
+                        <Card className="border-green-500/30 bg-green-500/5">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                    <Activity className="h-4 w-4 text-green-500" />
+                                    Acesso Administrativo Direto
+                                </CardTitle>
+                                <CardDescription className="text-xs">
+                                    Visualize o monitor deste tenant diretamente como administrador
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Button
+                                    onClick={() => window.open(`${window.location.origin}/admin/monitor/${tenant.slug}`, "_blank")}
+                                    className="w-full bg-green-600 hover:bg-green-700"
+                                >
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    Abrir Monitor (Admin)
+                                </Button>
+                            </CardContent>
+                        </Card>
+
                         {/* Tenant Monitor URL */}
                         <Card className="border-primary/20 bg-primary/5">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm flex items-center gap-2">
                                     <Link className="h-4 w-4" />
-                                    URL do Monitor (Acesso Even)
+                                    URL do Monitor (Acesso Staff)
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Selecione um token de acesso Even e copie a URL completa para acessar o monitor
+                                    Selecione um token de acesso para gerar URL compartilhável
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
@@ -375,7 +397,7 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
                                 )}
                                 {staffTokens.length === 0 && (
                                     <p className="text-xs text-muted-foreground">
-                                        Crie um token na aba "Tokens Even" para gerar URLs de acesso.
+                                        Crie um token na aba "Tokens Even" para gerar URLs de acesso para staff.
                                     </p>
                                 )}
                             </CardContent>
