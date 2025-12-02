@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { Loader2, Shield, Lock } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -12,12 +13,18 @@ import { toast } from "@/hooks/use-toast";
 
 import evenLogo from "@/assets/even-logo.png";
 
+const loginSchema = z.object({
+    email: z.string().email("Email inválido"),
+    password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
+});
+
 const AdminLogin = () => {
     const navigate = useNavigate();
     const { user, loading: authLoading } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
     useEffect(() => {
         const checkAdminAndMfa = async () => {
@@ -65,22 +72,41 @@ const AdminLogin = () => {
         }
     }, [user, authLoading, navigate]);
 
+    const validateForm = (): boolean => {
+        setErrors({});
+
+        const result = loginSchema.safeParse({ email, password });
+
+        if (!result.success) {
+            const fieldErrors: { email?: string; password?: string } = {};
+
+            result.error.errors.forEach((err) => {
+                if (err.path[0] === "email") {
+                    fieldErrors.email = err.message;
+                }
+
+                if (err.path[0] === "password") {
+                    fieldErrors.password = err.message;
+                }
+            });
+            setErrors(fieldErrors);
+            return false;
+        }
+
+        return true;
+    };
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!email || !password) {
-            toast({
-                title: "Campos obrigatórios",
-                description: "Preencha email e senha.",
-                variant: "destructive",
-            });
+        if (!validateForm()) {
             return;
         }
 
         setLoading(true);
 
         const { error } = await supabase.auth.signInWithPassword({
-            email,
+            email: email.trim(),
             password,
         });
 
@@ -127,9 +153,16 @@ const AdminLogin = () => {
                                 type="email"
                                 placeholder="admin@even7.com.br"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                                }}
                                 disabled={loading}
+                                className={errors.email ? "border-destructive" : ""}
                             />
+                            {errors.email && (
+                                <p className="text-sm text-destructive">{errors.email}</p>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="password">Senha</Label>
@@ -137,9 +170,16 @@ const AdminLogin = () => {
                                 id="password"
                                 type="password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                                }}
                                 disabled={loading}
+                                className={errors.password ? "border-destructive" : ""}
                             />
+                            {errors.password && (
+                                <p className="text-sm text-destructive">{errors.password}</p>
+                            )}
                         </div>
                         <Button type="submit" className="w-full" disabled={loading}>
                             {loading ? (
