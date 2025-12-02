@@ -8,8 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Copy, Check, RefreshCw, Play, Key, Link, Terminal, Activity, Clock, Loader2, CheckCircle2, XCircle, AlertCircle, Users } from 'lucide-react';
+import { Copy, Check, RefreshCw, Play, Key, Link, Terminal, Activity, Clock, Loader2, CheckCircle2, XCircle, AlertCircle, Users, History } from 'lucide-react';
 import { TenantUsersManager } from './TenantUsersManager';
+import { TenantAccessLogs } from './TenantAccessLogs';
 interface Tenant {
   id: string;
   name: string;
@@ -190,10 +191,14 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
         </DialogHeader>
 
         <Tabs defaultValue="users" className="mt-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Usuários
+            </TabsTrigger>
+            <TabsTrigger value="access" className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              Acessos
             </TabsTrigger>
             <TabsTrigger value="status" className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
@@ -212,6 +217,11 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
           {/* Users Tab */}
           <TabsContent value="users" className="mt-4">
             <TenantUsersManager tenantId={tenant.id} tenantName={tenant.name} />
+          </TabsContent>
+
+          {/* Access Logs Tab */}
+          <TabsContent value="access" className="mt-4">
+            <TenantAccessLogs tenantId={tenant.id} tenantName={tenant.name} />
           </TabsContent>
 
           {/* Status Tab */}

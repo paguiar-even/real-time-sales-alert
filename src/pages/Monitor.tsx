@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useSalesStatus } from '@/hooks/useSalesStatus';
 import { useAlertSound } from '@/hooks/useAlertSound';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -12,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Helmet } from 'react-helmet-async';
+import { supabase } from '@/integrations/supabase/client';
 import evenLogo from '@/assets/even-logo.png';
 import evenIcon from '@/assets/even-icon.png';
 import rowPattern from '@/assets/row-pattern.png';
@@ -25,6 +27,29 @@ const Monitor = () => {
   const { signOut } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
   const { isAdmin } = useAdmin();
+  const hasLoggedAccess = useRef(false);
+
+  // Log access when user visits the monitor
+  useEffect(() => {
+    const logAccess = async () => {
+      if (tenant && !hasLoggedAccess.current) {
+        hasLoggedAccess.current = true;
+        try {
+          await supabase.rpc('log_user_access', {
+            p_tenant_id: tenant.id,
+            p_tenant_name: tenant.name,
+            p_action: 'monitor_access'
+          });
+        } catch (error) {
+          console.error('Error logging access:', error);
+        }
+      }
+    };
+
+    if (!loading && !tenantLoading && tenant) {
+      logAccess();
+    }
+  }, [tenant, loading, tenantLoading]);
 
   // Use tenant logo if available, otherwise use Even logo
   const displayLogo = tenant?.logo_url || evenLogo;
