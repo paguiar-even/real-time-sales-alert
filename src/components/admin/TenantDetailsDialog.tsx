@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Copy, Check, RefreshCw, Play, Key, Link, Terminal, Activity, Clock, Loader2, CheckCircle2, XCircle, AlertCircle, Users, History } from "lucide-react";
+import { Copy, Check, RefreshCw, Play, Key, Link, Terminal, Activity, Clock, Loader2, CheckCircle2, XCircle, AlertCircle, Users, History, ExternalLink } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TenantUsersManager } from "./TenantUsersManager";
 import { TenantAccessLogs } from "./TenantAccessLogs";
@@ -355,8 +355,21 @@ export function TenantDetailsDialog({ tenant, open, onOpenChange, onTokenRegener
                                                 const token = staffTokens.find(t => t.id === selectedTokenId)?.token;
                                                 copyToClipboard(`${window.location.origin}/t/${tenant.slug}?token=${token}`, "Tenant URL");
                                             }}
+                                            title="Copiar URL"
                                         >
                                             {copiedField === "Tenant URL" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                                        </Button>
+                                        <Button
+                                            variant="default"
+                                            size="icon"
+                                            onClick={() => {
+                                                const token = staffTokens.find(t => t.id === selectedTokenId)?.token;
+                                                window.open(`${window.location.origin}/t/${tenant.slug}?token=${token}`, "_blank");
+                                            }}
+                                            title="Abrir Monitor"
+                                            className="bg-primary hover:bg-primary/90"
+                                        >
+                                            <ExternalLink className="h-4 w-4" />
                                         </Button>
                                     </div>
                                 )}
