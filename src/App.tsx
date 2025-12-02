@@ -10,6 +10,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Monitor from "./pages/Monitor";
 import TenantMonitor from "./pages/TenantMonitor";
+import AdminTenantMonitor from "./pages/AdminTenantMonitor";
 import StaffTenantsList from "./pages/StaffTenantsList";
 import Admin from "./pages/Admin";
 import AdminLogin from "./pages/AdminLogin";
@@ -53,6 +54,10 @@ const App = () => (
                                         <Admin />
                                     </ProtectedRoute>
                                 }
+                            />
+                            <Route
+                                path="/admin/monitor/:slug"
+                                element={<AdminTenantMonitor />}
                             />
                             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                             <Route path="*" element={<NotFound />} />
