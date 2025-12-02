@@ -134,6 +134,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_email: { Args: { user_uuid: string }; Returns: string }
       get_user_tenant_id: { Args: { user_uuid: string }; Returns: string }
       has_role: {
         Args: {
@@ -141,6 +142,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      search_users_by_email: {
+        Args: { search_email: string }
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+        }[]
       }
     }
     Enums: {
