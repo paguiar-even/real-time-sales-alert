@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
-import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History, Copy, Check } from 'lucide-react';
+import { Plus, LogOut, Building2, Loader2, Trash2, Search, UserPlus, Users, Upload, Image, Pencil, History, Copy, Check, RefreshCw, Key } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import evenLogo from '@/assets/even-logo.png';
 
@@ -25,6 +25,7 @@ interface Tenant {
   email_domains: string[];
   is_active: boolean;
   logo_url: string | null;
+  webhook_token: string | null;
   created_at: string;
 }
 
@@ -91,6 +92,8 @@ const Admin = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [copiedWebhookId, setCopiedWebhookId] = useState<string | null>(null);
+  const [copiedTokenId, setCopiedTokenId] = useState<string | null>(null);
+  const [regeneratingTokenId, setRegeneratingTokenId] = useState<string | null>(null);
 
   // Webhook base URL
   const webhookBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sales-webhook`;
@@ -113,6 +116,74 @@ const Admin = () => {
         variant: 'destructive',
       });
     }
+  };
+
+  const copyWebhookToken = async (tenant: Tenant) => {
+    if (!tenant.webhook_token) return;
+    try {
+      await navigator.clipboard.writeText(tenant.webhook_token);
+      setCopiedTokenId(tenant.id);
+      toast({
+        title: 'Token copiado',
+        description: 'Token do webhook copiado para a área de transferência.',
+      });
+      setTimeout(() => setCopiedTokenId(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível copiar o token.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const regenerateWebhookToken = async (tenant: Tenant) => {
+    if (!confirm(`Tem certeza que deseja regenerar o token de "${tenant.name}"? O token atual deixará de funcionar.`)) {
+      return;
+    }
+
+    setRegeneratingTokenId(tenant.id);
+    
+    // Generate new token using crypto
+    const newToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    const { error } = await supabase
+      .from('tenants')
+      .update({ webhook_token: newToken })
+      .eq('id', tenant.id);
+
+    if (error) {
+      console.error('Error regenerating token:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível regenerar o token.',
+        variant: 'destructive',
+      });
+    } else {
+      await logAuditEntry(
+        tenant.id,
+        tenant.name,
+        'token_regenerated',
+        { webhook_token: '***' },
+        { webhook_token: '***' }
+      );
+      
+      setTenants(prev =>
+        prev.map(t =>
+          t.id === tenant.id ? { ...t, webhook_token: newToken } : t
+        )
+      );
+      
+      toast({
+        title: 'Token regenerado',
+        description: `Novo token gerado para ${tenant.name}. Copie e atualize no n8n.`,
+      });
+    }
+    
+    setRegeneratingTokenId(null);
   };
 
   useEffect(() => {
@@ -902,7 +973,8 @@ const Admin = () => {
                         <TableHead className="w-[80px]">Logo</TableHead>
                         <TableHead>Nome</TableHead>
                         <TableHead>Slug</TableHead>
-                        <TableHead>Webhook URL (n8n)</TableHead>
+                        <TableHead>Webhook URL</TableHead>
+                        <TableHead>Token</TableHead>
                         <TableHead>Domínios</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
@@ -928,21 +1000,56 @@ const Admin = () => {
                             </code>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              <code className="bg-muted px-2 py-1 rounded text-xs max-w-[200px] truncate" title={`${webhookBaseUrl}/${tenant.slug}`}>
+                            <div className="flex items-center gap-1">
+                              <code className="bg-muted px-2 py-1 rounded text-xs" title={`${webhookBaseUrl}/${tenant.slug}`}>
                                 .../{tenant.slug}
                               </code>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => copyWebhookUrl(tenant)}
-                                title="Copiar URL do webhook"
-                                className="h-7 w-7 p-0"
+                                title="Copiar URL"
+                                className="h-6 w-6 p-0"
                               >
                                 {copiedWebhookId === tenant.id ? (
-                                  <Check className="h-3.5 w-3.5 text-green-500" />
+                                  <Check className="h-3 w-3 text-green-500" />
                                 ) : (
-                                  <Copy className="h-3.5 w-3.5" />
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <code className="bg-muted px-2 py-1 rounded text-xs font-mono">
+                                {tenant.webhook_token ? `${tenant.webhook_token.substring(0, 8)}...` : '-'}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyWebhookToken(tenant)}
+                                title="Copiar token"
+                                className="h-6 w-6 p-0"
+                                disabled={!tenant.webhook_token}
+                              >
+                                {copiedTokenId === tenant.id ? (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <Key className="h-3 w-3" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => regenerateWebhookToken(tenant)}
+                                title="Regenerar token"
+                                className="h-6 w-6 p-0"
+                                disabled={regeneratingTokenId === tenant.id}
+                              >
+                                {regeneratingTokenId === tenant.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-3 w-3" />
                                 )}
                               </Button>
                             </div>

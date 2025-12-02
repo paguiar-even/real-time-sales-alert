@@ -43,25 +43,13 @@ Deno.serve(async (req) => {
     
     console.log('Parsed URL path:', { pathParts, tenantSlug });
 
-    // Validate webhook token
-    const webhookToken = Deno.env.get('SALES_WEBHOOK_TOKEN');
+    // Get provided token from headers
     const providedToken = req.headers.get('x-webhook-token') || req.headers.get('authorization')?.replace('Bearer ', '');
 
-    if (!webhookToken) {
-      console.error('SALES_WEBHOOK_TOKEN not configured');
+    if (!providedToken) {
+      console.log('Unauthorized: Missing token');
       return new Response(
-        JSON.stringify({ error: 'Webhook token not configured on server' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
-
-    if (!providedToken || providedToken !== webhookToken) {
-      console.log('Unauthorized: Invalid or missing token');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized: Invalid or missing token' }),
+        JSON.stringify({ error: 'Unauthorized: Missing token' }),
         { 
           status: 401, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -109,24 +97,31 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Lookup tenant_id if tenant slug is in URL or body
+    // Lookup tenant and validate token
     const slugToUse = tenantSlug || rawBody.tenant_slug;
     let tenant_id: string | null = null;
     
     if (slugToUse) {
+      // Find tenant by slug and validate its specific token
       const { data: tenantData, error: tenantError } = await supabase
         .from('tenants')
-        .select('id, name')
+        .select('id, name, webhook_token')
         .eq('slug', slugToUse)
         .eq('is_active', true)
         .maybeSingle();
 
       if (tenantError) {
         console.error('Error looking up tenant:', tenantError);
-      } else if (tenantData) {
-        tenant_id = tenantData.id;
-        console.log(`Found tenant for slug "${slugToUse}": ${tenantData.name} (${tenant_id})`);
-      } else {
+        return new Response(
+          JSON.stringify({ error: 'Error looking up tenant' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      
+      if (!tenantData) {
         console.log(`No tenant found for slug "${slugToUse}"`);
         return new Response(
           JSON.stringify({ error: `Tenant not found: ${slugToUse}` }),
@@ -136,6 +131,35 @@ Deno.serve(async (req) => {
           }
         );
       }
+
+      // Validate per-tenant token
+      if (tenantData.webhook_token !== providedToken) {
+        console.log(`Unauthorized: Invalid token for tenant "${slugToUse}"`);
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized: Invalid token for this tenant' }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      tenant_id = tenantData.id;
+      console.log(`Authenticated tenant: ${tenantData.name} (${tenant_id})`);
+    } else {
+      // No tenant slug provided - use global token (backward compatibility)
+      const globalToken = Deno.env.get('SALES_WEBHOOK_TOKEN');
+      if (!globalToken || globalToken !== providedToken) {
+        console.log('Unauthorized: Invalid global token');
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized: Invalid token' }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      console.log('Authenticated with global token (no tenant specified)');
     }
 
     // Insert data into sales_status table
