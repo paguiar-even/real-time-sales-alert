@@ -14,6 +14,7 @@ const MfaEnroll = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect') || '/monitor';
+  const reset = searchParams.get('reset') === 'true';
   const { user, loading: authLoading } = useAuth();
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
@@ -21,6 +22,7 @@ const MfaEnroll = () => {
   const [verifyCode, setVerifyCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [enrolling, setEnrolling] = useState(true);
+  const [hasExistingFactor, setHasExistingFactor] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -33,17 +35,24 @@ const MfaEnroll = () => {
     }
   }, [user, authLoading, navigate]);
 
-  const startEnrollment = async () => {
+  const startEnrollment = async (forceReset = false) => {
     setEnrolling(true);
     try {
-      // First, check for existing unverified factors and remove them
       const { data: factorsData } = await supabase.auth.mfa.listFactors();
       
       if (factorsData?.totp) {
+        const verifiedFactor = factorsData.totp.find(f => f.status === 'verified');
+        
+        // If there's a verified factor and we're not resetting, show option to reset
+        if (verifiedFactor && !forceReset && !reset) {
+          setHasExistingFactor(true);
+          setEnrolling(false);
+          return;
+        }
+        
+        // Remove all existing factors (both verified and unverified)
         for (const factor of factorsData.totp) {
-          if (factor.status !== 'verified') {
-            await supabase.auth.mfa.unenroll({ factorId: factor.id });
-          }
+          await supabase.auth.mfa.unenroll({ factorId: factor.id });
         }
       }
 
@@ -59,6 +68,7 @@ const MfaEnroll = () => {
         setQrCode(data.totp.qr_code);
         setSecret(data.totp.secret);
         setFactorId(data.id);
+        setHasExistingFactor(false);
       }
     } catch (error: any) {
       console.error('Error enrolling MFA:', error);
@@ -70,6 +80,10 @@ const MfaEnroll = () => {
     } finally {
       setEnrolling(false);
     }
+  };
+
+  const handleReset = () => {
+    startEnrollment(true);
   };
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -161,60 +175,93 @@ const MfaEnroll = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Step 1: QR Code */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">1</span>
-              Escaneie o QR Code com o Google Authenticator
-            </div>
-            {qrCode && (
-              <div className="flex justify-center p-4 bg-white rounded-lg">
-                <img src={qrCode} alt="QR Code" className="w-48 h-48" />
+          {hasExistingFactor ? (
+            // Show reset option when there's an existing verified factor
+            <div className="space-y-6">
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  Você já possui autenticação em duas etapas configurada. 
+                  Se deseja reconfigurar, clique no botão abaixo.
+                </p>
               </div>
-            )}
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground mb-1">Ou insira o código manualmente:</p>
-              <code className="text-xs bg-muted px-2 py-1 rounded break-all">{secret}</code>
+              
+              <div className="space-y-3">
+                <Button onClick={handleReset} className="w-full" variant="destructive">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Resetar 2FA e configurar novamente
+                </Button>
+                
+                <Button 
+                  onClick={() => navigate(`/mfa/verify?redirect=${encodeURIComponent(redirect)}`)} 
+                  variant="outline" 
+                  className="w-full"
+                >
+                  Usar 2FA existente
+                </Button>
+              </div>
+              
+              <p className="text-xs text-muted-foreground text-center">
+                Atenção: ao resetar, você precisará escanear um novo QR Code no seu app autenticador.
+              </p>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Step 1: QR Code */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">1</span>
+                  Escaneie o QR Code com o Google Authenticator
+                </div>
+                {qrCode && (
+                  <div className="flex justify-center p-4 bg-white rounded-lg">
+                    <img src={qrCode} alt="QR Code" className="w-48 h-48" />
+                  </div>
+                )}
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Ou insira o código manualmente:</p>
+                  <code className="text-xs bg-muted px-2 py-1 rounded break-all">{secret}</code>
+                </div>
+              </div>
 
-          {/* Step 2: Verify */}
-          <form onSubmit={handleVerify} className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">2</span>
-              Digite o código do app
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="code">Código de verificação</Label>
-              <Input
-                id="code"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                placeholder="000000"
-                value={verifyCode}
-                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
-                disabled={loading}
-                className="text-center text-2xl tracking-widest"
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading || verifyCode.length !== 6}>
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-              )}
-              Verificar e ativar
-            </Button>
-          </form>
+              {/* Step 2: Verify */}
+              <form onSubmit={handleVerify} className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">2</span>
+                  Digite o código do app
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="code">Código de verificação</Label>
+                  <Input
+                    id="code"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={verifyCode}
+                    onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                    disabled={loading}
+                    className="text-center text-2xl tracking-widest"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading || verifyCode.length !== 6}>
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                  )}
+                  Verificar e ativar
+                </Button>
+              </form>
 
-          <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
-            <Smartphone className="h-5 w-5 text-muted-foreground mt-0.5" />
-            <p className="text-xs text-muted-foreground">
-              Baixe o Google Authenticator na <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2" target="_blank" rel="noopener noreferrer" className="underline">Play Store</a> ou <a href="https://apps.apple.com/app/google-authenticator/id388497605" target="_blank" rel="noopener noreferrer" className="underline">App Store</a>
-            </p>
-          </div>
+              <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
+                <Smartphone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  Baixe o Google Authenticator na <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2" target="_blank" rel="noopener noreferrer" className="underline">Play Store</a> ou <a href="https://apps.apple.com/app/google-authenticator/id388497605" target="_blank" rel="noopener noreferrer" className="underline">App Store</a>
+                </p>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
