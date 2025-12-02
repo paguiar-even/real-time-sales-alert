@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
@@ -9,6 +9,7 @@ import { TimeSinceUpdate } from "@/components/monitor/TimeSinceUpdate";
 import { SalesChart } from "@/components/monitor/SalesChart";
 import { HourlySales } from "@/hooks/useSalesStatus";
 import { Button } from "@/components/ui/button";
+import { useStaffToken } from "@/hooks/useStaffToken";
 
 import evenLogo from "@/assets/even-logo.png";
 import evenIcon from "@/assets/even-icon.png";
@@ -35,9 +36,8 @@ interface HourlyData {
 
 const TenantMonitor = () => {
     const { slug } = useParams<{ slug: string }>();
-    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const token = searchParams.get("token");
+    const { token, isValidated, setValidated, clearToken } = useStaffToken();
 
     const [validating, setValidating] = useState(true);
     const [isValid, setIsValid] = useState(false);
@@ -78,15 +78,19 @@ const TenantMonitor = () => {
                     user_email: data[0].user_email
                 });
                 setIsValid(true);
+
+                // Mark as validated and clean URL
+                setValidated();
             } else {
                 setError("Token inválido ou expirado");
+                clearToken();
             }
 
             setValidating(false);
         };
 
         validateToken();
-    }, [token, slug]);
+    }, [token, slug, setValidated, clearToken]);
 
     // Fetch sales data
     useEffect(() => {
@@ -275,7 +279,7 @@ const TenantMonitor = () => {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => navigate(`/tenants?token=${token}`)}
+                                onClick={() => navigate("/tenants")}
                                 className="text-[#00313C] hover:bg-[#00313C]/10"
                             >
                                 <ArrowLeft className="h-4 w-4 mr-1" />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Loader2, Search, Building2, ExternalLink, ShieldAlert, Activity, Clock } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useStaffToken } from "@/hooks/useStaffToken";
 
 import evenLogo from "@/assets/even-logo.png";
 
@@ -24,9 +25,8 @@ interface TokenValidation {
 }
 
 export default function StaffTenantsList() {
-    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const token = searchParams.get("token");
+    const { token, isValidated, setValidated, clearToken } = useStaffToken();
 
     const [validating, setValidating] = useState(true);
     const [tokenInfo, setTokenInfo] = useState<TokenValidation | null>(null);
@@ -44,6 +44,14 @@ export default function StaffTenantsList() {
             return;
         }
 
+        // If already validated in this session, skip RPC call
+        if (isValidated) {
+            setTokenInfo({ isValid: true, userEmail: "" });
+            fetchTenants();
+            setValidating(false);
+            return;
+        }
+
         // Validate token using the dedicated function
         const { data, error } = await supabase.rpc("validate_staff_token_only", {
             p_token: token
@@ -54,9 +62,13 @@ export default function StaffTenantsList() {
                 isValid: true,
                 userEmail: data[0].user_email || ""
             });
+
+            // Mark as validated and clean URL
+            setValidated();
             fetchTenants();
         } else {
             setTokenInfo({ isValid: false, userEmail: "" });
+            clearToken();
         }
 
         setValidating(false);
@@ -210,7 +222,8 @@ function TenantCard({ tenant, token, inactive }: { tenant: Tenant; token: string
     const navigate = useNavigate();
 
     const handleAccess = () => {
-        navigate(`/t/${tenant.slug}?token=${token}`);
+        // Navigate without token in URL - token is stored in sessionStorage
+        navigate(`/t/${tenant.slug}`);
     };
 
     return (
