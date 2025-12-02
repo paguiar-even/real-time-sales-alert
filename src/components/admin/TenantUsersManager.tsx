@@ -20,7 +20,7 @@ import {
   Mail, 
   User,
   Shield,
-  AlertTriangle
+  Pencil
 } from 'lucide-react';
 
 interface TenantUser {
@@ -43,15 +43,21 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
   const [users, setUsers] = useState<TenantUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resettingMfaUserId, setResettingMfaUserId] = useState<string | null>(null);
   const [togglingBlockUserId, setTogglingBlockUserId] = useState<string | null>(null);
 
-  // Form state
+  // Form state for create
   const [newEmail, setNewEmail] = useState('');
   const [newFullName, setNewFullName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newPassword, setNewPassword] = useState('');
+
+  // Form state for edit
+  const [editingUser, setEditingUser] = useState<TenantUser | null>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -224,6 +230,50 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setNewPassword(password);
+  };
+
+  const openEditDialog = (user: TenantUser) => {
+    setEditingUser(user);
+    setEditFullName(user.full_name || '');
+    setEditPhone(user.phone || '');
+    setEditDialogOpen(true);
+  };
+
+  const handleEditUser = async () => {
+    if (!editingUser) return;
+
+    setSaving(true);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: editFullName.trim() || null,
+        phone: editPhone.trim() || null
+      })
+      .eq('id', editingUser.user_id);
+
+    if (error) {
+      console.error('Error updating user:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar o usuário.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Usuário atualizado',
+        description: `Os dados de ${editingUser.email} foram atualizados.`,
+      });
+      setUsers(prev => prev.map(u => 
+        u.user_id === editingUser.user_id 
+          ? { ...u, full_name: editFullName.trim() || null, phone: editPhone.trim() || null }
+          : u
+      ));
+      setEditDialogOpen(false);
+      setEditingUser(null);
+    }
+
+    setSaving(false);
   };
 
   return (
@@ -399,6 +449,14 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditDialog(user)}
+                        title="Editar usuário"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       {user.mfa_enabled && (
                         <Button
                           variant="outline"
@@ -432,6 +490,70 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
             </TableBody>
           </Table>
         )}
+
+        {/* Edit User Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) {
+            setEditingUser(null);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Usuário</DialogTitle>
+              <DialogDescription>
+                Atualize os dados de {editingUser?.email}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-muted-foreground">
+                  <Mail className="h-4 w-4" />
+                  Email
+                </Label>
+                <Input
+                  value={editingUser?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-name" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Nome Completo
+                </Label>
+                <Input
+                  id="edit-name"
+                  placeholder="João da Silva"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone" className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Telefone
+                </Label>
+                <Input
+                  id="edit-phone"
+                  type="tel"
+                  placeholder="(11) 99999-9999"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleEditUser} disabled={saving}>
+                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
