@@ -20,8 +20,10 @@ import {
     UserPlus,
     User,
     Trash2,
-    Key
+    Key,
+    ShieldPlus
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -41,6 +43,7 @@ export function EvenUsersManager() {
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+    const [promotingUserId, setPromotingUserId] = useState<string | null>(null);
 
     // Form state
     const [email, setEmail] = useState("");
@@ -138,6 +141,7 @@ export function EvenUsersManager() {
     };
 
     const handleRemoveStaffRole = async (user: StaffUser) => {
+
         if (!confirm(`Tem certeza que deseja remover o acesso staff de "${user.email}"? Os tokens de acesso serão desativados.`)) {
             return;
         }
@@ -173,6 +177,44 @@ export function EvenUsersManager() {
         }
 
         setRemovingUserId(null);
+    };
+
+    const handlePromoteToAdmin = async (user: StaffUser) => {
+
+        if (!confirm(`Promover "${user.email}" para Administrador? Ele terá acesso total ao painel administrativo.`)) {
+            return;
+        }
+
+        setPromotingUserId(user.user_id);
+
+        try {
+            const { error } = await supabase.rpc("assign_admin_role", {
+                target_user_id: user.user_id
+            });
+
+            if (error) {
+                console.error("Error promoting to admin:", error);
+                toast({
+                    title: "Erro",
+                    description: "Não foi possível promover o usuário.",
+                    variant: "destructive",
+                });
+            } else {
+                toast({
+                    title: "Usuário promovido",
+                    description: `${user.email} agora é Administrador e pode acessar o painel admin.`,
+                });
+            }
+        } catch (err) {
+            console.error("Error:", err);
+            toast({
+                title: "Erro",
+                description: "Ocorreu um erro ao promover o usuário.",
+                variant: "destructive",
+            });
+        }
+
+        setPromotingUserId(null);
     };
 
     const getTimeAgo = (dateStr: string | null) => {
@@ -371,19 +413,45 @@ export function EvenUsersManager() {
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="text-destructive hover:text-destructive"
-                                            onClick={() => handleRemoveStaffRole(user)}
-                                            disabled={removingUserId === user.user_id}
-                                        >
-                                            {removingUserId === user.user_id ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <Trash2 className="h-4 w-4" />
-                                            )}
-                                        </Button>
+                                        <div className="flex items-center justify-end gap-1">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-primary hover:text-primary"
+                                                        onClick={() => handlePromoteToAdmin(user)}
+                                                        disabled={promotingUserId === user.user_id}
+                                                    >
+                                                        {promotingUserId === user.user_id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <ShieldPlus className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Promover para Admin</TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-destructive hover:text-destructive"
+                                                        onClick={() => handleRemoveStaffRole(user)}
+                                                        disabled={removingUserId === user.user_id}
+                                                    >
+                                                        {removingUserId === user.user_id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Remover Staff</TooltipContent>
+                                            </Tooltip>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
