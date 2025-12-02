@@ -341,6 +341,14 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      admin_reset_user_password: {
+        Args: { new_password: string; target_user_id: string }
+        Returns: boolean
+      }
+      admin_toggle_user_mfa: {
+        Args: { mfa_required: boolean; target_user_id: string }
+        Returns: boolean
+      }
       assign_admin_role: { Args: { target_user_id: string }; Returns: boolean }
       assign_staff_role: { Args: { target_user_id: string }; Returns: boolean }
       check_rate_limit: {

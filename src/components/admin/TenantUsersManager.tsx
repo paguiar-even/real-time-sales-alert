@@ -21,7 +21,8 @@ import {
     Mail,
     User,
     Shield,
-    Pencil
+    Pencil,
+    Key
 } from "lucide-react";
 
 interface TenantUser {
@@ -45,9 +46,11 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
     const [loading, setLoading] = useState(true);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [resettingMfaUserId, setResettingMfaUserId] = useState<string | null>(null);
     const [togglingBlockUserId, setTogglingBlockUserId] = useState<string | null>(null);
+    const [togglingMfaUserId, setTogglingMfaUserId] = useState<string | null>(null);
 
     // Form state for create
     const [newEmail, setNewEmail] = useState("");
@@ -59,6 +62,10 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
     const [editingUser, setEditingUser] = useState<TenantUser | null>(null);
     const [editFullName, setEditFullName] = useState("");
     const [editPhone, setEditPhone] = useState("");
+    
+    // Form state for password reset
+    const [passwordUser, setPasswordUser] = useState<TenantUser | null>(null);
+    const [resetPassword, setResetPassword] = useState("");
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -240,6 +247,105 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
         setEditFullName(user.full_name || "");
         setEditPhone(user.phone || "");
         setEditDialogOpen(true);
+    };
+
+    const openPasswordDialog = (user: TenantUser) => {
+        setPasswordUser(user);
+        setResetPassword("");
+        setPasswordDialogOpen(true);
+    };
+
+    const handleResetPassword = async () => {
+
+        if (!passwordUser) return;
+
+        if (!resetPassword || resetPassword.length < 6) {
+            toast({
+                title: "Senha inválida",
+                description: "A senha deve ter pelo menos 6 caracteres.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setSaving(true);
+
+        try {
+            const { error } = await supabase.rpc("admin_reset_user_password", {
+                target_user_id: passwordUser.user_id,
+                new_password: resetPassword
+            });
+
+            if (error) throw error;
+
+            toast({
+                title: "Senha alterada",
+                description: `A senha de ${passwordUser.email} foi alterada com sucesso.`,
+            });
+
+            setPasswordDialogOpen(false);
+            setPasswordUser(null);
+            setResetPassword("");
+        } catch (error: any) {
+            console.error("Error resetting password:", error);
+            toast({
+                title: "Erro",
+                description: "Não foi possível alterar a senha.",
+                variant: "destructive",
+            });
+        }
+
+        setSaving(false);
+    };
+
+    const handleToggleMfa = async (user: TenantUser) => {
+        const newStatus = !user.mfa_enabled;
+        const action = newStatus ? "habilitar" : "desabilitar";
+
+        if (!confirm(`Tem certeza que deseja ${action} o 2FA para "${user.email}"?${!newStatus ? " Isso irá remover a configuração atual do 2FA." : ""}`)) {
+            return;
+        }
+
+        setTogglingMfaUserId(user.user_id);
+
+        try {
+            const { error } = await supabase.rpc("admin_toggle_user_mfa", {
+                target_user_id: user.user_id,
+                mfa_required: newStatus
+            });
+
+            if (error) throw error;
+
+            toast({
+                title: newStatus ? "2FA habilitado" : "2FA desabilitado",
+                description: `O 2FA de ${user.email} foi ${newStatus ? "habilitado" : "desabilitado"}.`,
+            });
+
+            setUsers(prev => prev.map(u =>
+                u.user_id === user.user_id
+                    ? { ...u, mfa_enabled: newStatus }
+                    : u
+            ));
+        } catch (error: any) {
+            console.error("Error toggling MFA:", error);
+            toast({
+                title: "Erro",
+                description: `Não foi possível ${action} o 2FA.`,
+                variant: "destructive",
+            });
+        }
+
+        setTogglingMfaUserId(null);
+    };
+
+    const generateResetPassword = () => {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+        let password = "";
+
+        for (let i = 0; i < 12; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        setResetPassword(password);
     };
 
     const handleEditUser = async () => {
@@ -425,17 +531,24 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                        {user.mfa_enabled ? (
-                                            <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20">
-                                                <Shield className="h-3 w-3 mr-1" />
-                                                Ativo
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="outline" className="text-muted-foreground">
-                                                <ShieldOff className="h-3 w-3 mr-1" />
-                                                Inativo
-                                            </Badge>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <Switch
+                                                checked={user.mfa_enabled}
+                                                onCheckedChange={() => handleToggleMfa(user)}
+                                                disabled={togglingMfaUserId === user.user_id}
+                                            />
+                                            {user.mfa_enabled ? (
+                                                <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20">
+                                                    <Shield className="h-3 w-3 mr-1" />
+                                                    Ativo
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="text-muted-foreground">
+                                                    <ShieldOff className="h-3 w-3 mr-1" />
+                                                    Inativo
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         {user.is_blocked ? (
@@ -459,6 +572,14 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
                                                 title="Editar usuário"
                                             >
                                                 <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => openPasswordDialog(user)}
+                                                title="Resetar senha"
+                                            >
+                                                <Key className="h-4 w-4" />
                                             </Button>
                                             {user.mfa_enabled && (
                                                 <Button
@@ -554,6 +675,57 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
                             <Button onClick={handleEditUser} disabled={saving}>
                                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                 Salvar
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Password Reset Dialog */}
+                <Dialog open={passwordDialogOpen} onOpenChange={(open) => {
+                    setPasswordDialogOpen(open);
+
+                    if (!open) {
+                        setPasswordUser(null);
+                        setResetPassword("");
+                    }
+                }}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Resetar Senha</DialogTitle>
+                            <DialogDescription>
+                                Defina uma nova senha para {passwordUser?.email}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="reset-password" className="flex items-center gap-2">
+                                    <Key className="h-4 w-4" />
+                                    Nova Senha *
+                                </Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="reset-password"
+                                        type="text"
+                                        placeholder="Mínimo 6 caracteres"
+                                        value={resetPassword}
+                                        onChange={(e) => setResetPassword(e.target.value)}
+                                    />
+                                    <Button type="button" variant="outline" onClick={generateResetPassword} title="Gerar senha">
+                                        <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    O usuário deverá usar esta nova senha para fazer login.
+                                </p>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
+                                Cancelar
+                            </Button>
+                            <Button onClick={handleResetPassword} disabled={saving || resetPassword.length < 6}>
+                                {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                Alterar Senha
                             </Button>
                         </DialogFooter>
                     </DialogContent>
