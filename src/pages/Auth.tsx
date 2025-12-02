@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,40 +11,88 @@ import { Helmet } from 'react-helmet-async';
 import evenLogo from '@/assets/even-logo.png';
 import evenIcon from '@/assets/even-icon.png';
 import rowPattern from '@/assets/row-pattern.png';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, LogIn, UserPlus } from 'lucide-react';
 
-const authSchema = z.object({
+const loginSchema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+});
+
+const signupSchema = z.object({
+  fullName: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  phone: z.string().min(10, 'Telefone inválido').optional().or(z.literal('')),
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
 });
 
 const Auth = () => {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; fullName?: string; phone?: string }>({});
   
   const { signIn, user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirect if already authenticated
+  // Check MFA status and redirect
   useEffect(() => {
+    const checkMfaAndRedirect = async () => {
+      if (!user) return;
+
+      try {
+        const { data: factorsData } = await supabase.auth.mfa.listFactors();
+        const totpFactor = factorsData?.totp?.find(f => f.status === 'verified');
+
+        if (!totpFactor) {
+          navigate('/mfa/enroll?redirect=/monitor');
+          return;
+        }
+
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        
+        if (aalData?.currentLevel !== 'aal2') {
+          navigate('/mfa/verify?redirect=/monitor');
+        } else {
+          navigate('/monitor');
+        }
+      } catch (error) {
+        console.error('Error checking MFA:', error);
+        navigate('/monitor');
+      }
+    };
+
     if (user && !loading) {
-      navigate('/monitor');
+      checkMfaAndRedirect();
     }
   }, [user, loading, navigate]);
 
   const validateForm = () => {
-    const result = authSchema.safeParse({ email, password });
-    if (!result.success) {
-      const fieldErrors: { email?: string; password?: string } = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0] === 'email') fieldErrors.email = err.message;
-        if (err.path[0] === 'password') fieldErrors.password = err.message;
-      });
-      setErrors(fieldErrors);
-      return false;
+    if (isSignUp) {
+      const result = signupSchema.safeParse({ email, password, fullName, phone });
+      if (!result.success) {
+        const fieldErrors: typeof errors = {};
+        result.error.errors.forEach((err) => {
+          const field = err.path[0] as keyof typeof errors;
+          fieldErrors[field] = err.message;
+        });
+        setErrors(fieldErrors);
+        return false;
+      }
+    } else {
+      const result = loginSchema.safeParse({ email, password });
+      if (!result.success) {
+        const fieldErrors: typeof errors = {};
+        result.error.errors.forEach((err) => {
+          const field = err.path[0] as keyof typeof errors;
+          fieldErrors[field] = err.message;
+        });
+        setErrors(fieldErrors);
+        return false;
+      }
     }
     setErrors({});
     return true;
@@ -57,27 +106,72 @@ const Auth = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await signIn(email, password);
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          toast({
-            variant: 'destructive',
-            title: 'Erro de login',
-            description: 'Email ou senha incorretos.',
-          });
+      if (isSignUp) {
+        const redirectUrl = `${window.location.origin}/`;
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              full_name: fullName,
+            },
+          },
+        });
+
+        if (error) {
+          if (error.message.includes('already registered')) {
+            toast({
+              variant: 'destructive',
+              title: 'Erro no cadastro',
+              description: 'Este email já está cadastrado.',
+            });
+          } else {
+            toast({
+              variant: 'destructive',
+              title: 'Erro no cadastro',
+              description: error.message,
+            });
+          }
         } else {
+          // Update profile with phone if provided
+          if (phone) {
+            const { data: { user: newUser } } = await supabase.auth.getUser();
+            if (newUser) {
+              await supabase
+                .from('profiles')
+                .update({ phone })
+                .eq('id', newUser.id);
+            }
+          }
+          
           toast({
-            variant: 'destructive',
-            title: 'Erro de login',
-            description: error.message,
+            title: 'Conta criada!',
+            description: 'Configure o 2FA para continuar.',
           });
         }
       } else {
-        toast({
-          title: 'Login realizado!',
-          description: 'Redirecionando...',
-        });
-        navigate('/monitor');
+        const { error } = await signIn(email, password);
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            toast({
+              variant: 'destructive',
+              title: 'Erro de login',
+              description: 'Email ou senha incorretos.',
+            });
+          } else {
+            toast({
+              variant: 'destructive',
+              title: 'Erro de login',
+              description: error.message,
+            });
+          }
+        } else {
+          toast({
+            title: 'Login realizado!',
+            description: 'Verificando autenticação...',
+          });
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -98,7 +192,7 @@ const Auth = () => {
   return (
     <>
       <Helmet>
-        <title>Login | Monitor de Vendas - Even Tecnologia</title>
+        <title>{isSignUp ? 'Cadastro' : 'Login'} | Monitor de Vendas - Even Tecnologia</title>
         <meta name="description" content="Acesse o monitor de vendas em tempo real" />
       </Helmet>
 
@@ -135,14 +229,72 @@ const Auth = () => {
               Monitor de Vendas
             </h1>
             <p 
-              className="text-center mb-8 text-sm"
+              className="text-center mb-6 text-sm"
               style={{ color: '#00313C', opacity: 0.7 }}
             >
-              Entre com suas credenciais para acessar
+              {isSignUp ? 'Crie sua conta para acessar' : 'Entre com suas credenciais'}
             </p>
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <>
+                  <div className="space-y-2">
+                    <Label 
+                      htmlFor="fullName" 
+                      className="font-medium"
+                      style={{ color: '#00313C' }}
+                    >
+                      Nome completo
+                    </Label>
+                    <Input
+                      id="fullName"
+                      type="text"
+                      placeholder="Seu nome"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="border-2 focus:ring-2 focus:ring-offset-2"
+                      style={{ 
+                        backgroundColor: 'white',
+                        borderColor: '#00313C',
+                        color: '#00313C'
+                      }}
+                      disabled={isSubmitting}
+                    />
+                    {errors.fullName && (
+                      <p className="text-sm font-medium" style={{ color: '#dc2626' }}>{errors.fullName}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label 
+                      htmlFor="phone" 
+                      className="font-medium"
+                      style={{ color: '#00313C' }}
+                    >
+                      Telefone (opcional)
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="(11) 99999-9999"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="border-2 focus:ring-2 focus:ring-offset-2"
+                      style={{ 
+                        backgroundColor: 'white',
+                        borderColor: '#00313C',
+                        color: '#00313C'
+                      }}
+                      disabled={isSubmitting}
+                    />
+                    {errors.phone && (
+                      <p className="text-sm font-medium" style={{ color: '#dc2626' }}>{errors.phone}</p>
+                    )}
+                  </div>
+                </>
+              )}
+
               <div className="space-y-2">
                 <Label 
                   htmlFor="email" 
@@ -209,20 +361,39 @@ const Auth = () => {
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : isSignUp ? (
+                  <UserPlus className="h-4 w-4 mr-2" />
                 ) : (
                   <LogIn className="h-4 w-4 mr-2" />
                 )}
-                Entrar
+                {isSignUp ? 'Criar conta' : 'Entrar'}
               </Button>
             </form>
 
-            {/* Info */}
+            {/* Toggle */}
             <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setErrors({});
+                }}
+                className="text-sm font-medium underline hover:no-underline"
+                style={{ color: '#00313C' }}
+              >
+                {isSignUp ? 'Já tem conta? Entrar' : 'Não tem conta? Criar'}
+              </button>
+            </div>
+
+            {/* Info */}
+            <div className="mt-4 text-center">
               <p 
                 className="text-xs"
                 style={{ color: '#00313C', opacity: 0.6 }}
               >
-                Não possui acesso? Entre em contato com a Even Tecnologia.
+                {isSignUp 
+                  ? 'Após o cadastro, você precisará configurar o 2FA.' 
+                  : 'Não possui acesso? Entre em contato com a Even Tecnologia.'}
               </p>
             </div>
           </div>
