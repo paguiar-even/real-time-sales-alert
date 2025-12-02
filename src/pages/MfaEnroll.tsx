@@ -151,6 +151,9 @@ const MfaEnroll = () => {
 
       if (verifyError) throw verifyError;
 
+      // Refresh session to get AAL2 level before navigation
+      await supabase.auth.refreshSession();
+
       // Update profile to mark MFA as enabled
       await supabase
         .from('profiles')

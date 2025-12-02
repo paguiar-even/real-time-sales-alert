@@ -97,6 +97,9 @@ const MfaVerify = () => {
 
       if (verifyError) throw verifyError;
 
+      // Refresh session to get AAL2 level before navigation
+      await supabase.auth.refreshSession();
+
       toast({
         title: 'Verificação concluída',
         description: 'Acesso autorizado.',
