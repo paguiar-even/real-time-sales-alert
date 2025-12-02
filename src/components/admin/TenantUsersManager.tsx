@@ -86,7 +86,11 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
     }, [tenantId]);
 
     const handleCreateUser = async () => {
+        console.log("[DEBUG] handleCreateUser called");
+        console.log("[DEBUG] Form data:", { newEmail, newPassword: "***", newFullName, newPhone, tenantId });
+
         if (!newEmail || !newPassword) {
+            console.log("[DEBUG] Validation failed: missing email or password");
             toast({
                 title: "Campos obrigatórios",
                 description: "Email e senha são obrigatórios.",
@@ -96,6 +100,7 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
         }
 
         if (newPassword.length < 6) {
+            console.log("[DEBUG] Validation failed: password too short");
             toast({
                 title: "Senha muito curta",
                 description: "A senha deve ter pelo menos 6 caracteres.",
@@ -105,9 +110,11 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
         }
 
         setSaving(true);
+        console.log("[DEBUG] Starting user creation process...");
 
         try {
             // Create user using the admin function
+            console.log("[DEBUG] Calling admin_create_user RPC...");
             const { data: newUserId, error: createError } = await supabase.rpc("admin_create_user", {
                 user_email: newEmail.trim().toLowerCase(),
                 user_password: newPassword,
@@ -115,22 +122,31 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
                 user_phone: newPhone.trim() || null
             });
 
+            console.log("[DEBUG] admin_create_user response:", { newUserId, createError });
+
             if (createError) {
+                console.error("[DEBUG] admin_create_user error:", createError);
                 throw createError;
             }
 
             // Associate user with tenant
-            const { error: assignError } = await supabase
+            console.log("[DEBUG] Associating user with tenant...", { user_id: newUserId, tenant_id: tenantId });
+            const { data: assignData, error: assignError } = await supabase
                 .from("user_tenants")
                 .insert({
                     user_id: newUserId,
                     tenant_id: tenantId
-                });
+                })
+                .select();
+
+            console.log("[DEBUG] user_tenants insert response:", { assignData, assignError });
 
             if (assignError) {
+                console.error("[DEBUG] user_tenants insert error:", assignError);
                 throw assignError;
             }
 
+            console.log("[DEBUG] User created and assigned successfully!");
             toast({
                 title: "Usuário criado",
                 description: `${newEmail} foi criado e associado a ${tenantName}.`,
@@ -143,7 +159,13 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
             setCreateDialogOpen(false);
             fetchUsers();
         } catch (error: any) {
-            console.error("Error creating user:", error);
+            console.error("[DEBUG] Error in handleCreateUser:", error);
+            console.error("[DEBUG] Error details:", {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+            });
             let message = "Não foi possível criar o usuário.";
 
             if (error.message?.includes("duplicate key")) {
@@ -157,6 +179,7 @@ export function TenantUsersManager({ tenantId, tenantName }: TenantUsersManagerP
         }
 
         setSaving(false);
+        console.log("[DEBUG] handleCreateUser finished");
     };
 
     const handleResetMfa = async (user: TenantUser) => {
