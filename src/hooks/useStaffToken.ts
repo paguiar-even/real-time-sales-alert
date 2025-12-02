@@ -26,12 +26,13 @@ export function useStaffToken(): UseStaffTokenReturn {
         // First check URL for token
         const urlToken = new URLSearchParams(window.location.search).get("token");
 
-        if (urlToken) {
-            return urlToken;
+        if (urlToken && urlToken.trim()) {
+            return urlToken.trim();
         }
 
         // Fallback to sessionStorage
-        return sessionStorage.getItem(STAFF_TOKEN_KEY);
+        const storedToken = sessionStorage.getItem(STAFF_TOKEN_KEY);
+        return storedToken && storedToken.trim() ? storedToken.trim() : null;
     });
 
     const [isValidated, setIsValidated] = useState(() => {
