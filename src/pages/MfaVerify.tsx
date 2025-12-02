@@ -172,10 +172,19 @@ const MfaVerify = () => {
             </Button>
           </form>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <Button variant="link" onClick={handleSignOut} className="text-muted-foreground">
               Usar outra conta
             </Button>
+            <div>
+              <Button 
+                variant="link" 
+                onClick={() => navigate(`/mfa/enroll?redirect=${encodeURIComponent(redirect)}&reset=true`)} 
+                className="text-destructive text-xs"
+              >
+                Perdi acesso ao app autenticador
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
