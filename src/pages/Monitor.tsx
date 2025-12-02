@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Maximize2, Minimize2, Volume2, VolumeX, LogOut, Settings } from "lucide-react";
 import { Helmet } from "react-helmet-async";
@@ -30,6 +30,9 @@ const Monitor = () => {
     const { signOut } = useAuth();
     const { isAdmin } = useAdmin();
     const hasLoggedAccess = useRef(false);
+    const [isSalesHidden, setIsSalesHidden] = useState(false);
+
+    const toggleSalesVisibility = () => setIsSalesHidden(prev => !prev);
 
     // Log access when user visits the monitor
     useEffect(() => {
@@ -222,6 +225,8 @@ const Monitor = () => {
                                         vendas={currentStatus.vendas_minuto}
                                         status={currentStatus.vendas_status}
                                         isFullscreen={true}
+                                        isHidden={isSalesHidden}
+                                        onToggleVisibility={toggleSalesVisibility}
                                     />
                                     <TimeSinceUpdate
                                         seconds={timeSinceUpdate}
@@ -365,6 +370,8 @@ const Monitor = () => {
                                         vendas={currentStatus.vendas_minuto}
                                         status={currentStatus.vendas_status}
                                         isFullscreen={false}
+                                        isHidden={isSalesHidden}
+                                        onToggleVisibility={toggleSalesVisibility}
                                     />
                                     <TimeSinceUpdate
                                         seconds={timeSinceUpdate}
