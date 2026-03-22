@@ -1,13 +1,24 @@
 
 
-## Plan: Replace for...of with Promise.all in `fetchUserTenants`
+## Plan: Improve alarm cleanup in `useAlertSound.ts`
 
-**File:** `src/pages/Admin.tsx`  
-**Lines 321-334:** Replace the sequential `for...of` loop with parallel `Promise.all` + `.map()`.
+Three targeted changes to properly track and clean up the pulse interval:
 
-- Remove `const enrichedData: UserTenant[] = [];` and the `for...of` block
-- Replace with `const enrichedData: UserTenant[] = await Promise.all(...)` using async map
-- Keep `setUserTenants` and `setLoadingUserTenants` calls unchanged
+**File:** `src/hooks/useAlertSound.ts`
 
-This parallelizes the `get_user_email` RPC calls for better performance.
+1. **Line 13** — Add `alarmCleanupRef` after `isPlayingRef`:
+   ```ts
+   const alarmCleanupRef = useRef<(() => void) | undefined>(undefined);
+   ```
+
+2. **Lines 87-88** — In `toggleMute`, add cleanup calls before `stopAlarm()`:
+   ```ts
+   if (newValue) {
+       alarmCleanupRef.current?.();
+       alarmCleanupRef.current = undefined;
+       stopAlarm();
+   }
+   ```
+
+3. **Lines 95-106** — Replace the "Handle alert state changes" `useEffect` with the version that stores/clears `alarmCleanupRef`.
 
