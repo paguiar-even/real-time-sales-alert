@@ -58,6 +58,41 @@ export type Database = {
           },
         ]
       }
+      alert_notifications_log: {
+        Row: {
+          channels: string[] | null
+          created_at: string | null
+          id: string
+          results: Json | null
+          tenant_id: string | null
+          tenant_name: string
+        }
+        Insert: {
+          channels?: string[] | null
+          created_at?: string | null
+          id?: string
+          results?: Json | null
+          tenant_id?: string | null
+          tenant_name: string
+        }
+        Update: {
+          channels?: string[] | null
+          created_at?: string | null
+          id?: string
+          results?: Json | null
+          tenant_id?: string | null
+          tenant_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_notifications_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

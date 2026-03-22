@@ -100,6 +100,7 @@ Deno.serve(async (req) => {
     // Lookup tenant and validate token
     const slugToUse = tenantSlug || rawBody.tenant_slug;
     let tenant_id: string | null = null;
+    let tenantName: string | null = null;
     
     if (slugToUse) {
       // Find tenant by slug and validate its specific token
@@ -145,6 +146,7 @@ Deno.serve(async (req) => {
       }
 
       tenant_id = tenantData.id;
+      tenantName = tenantData.name;
       console.log(`Authenticated tenant: ${tenantData.name} (${tenant_id})`);
     } else {
       // No tenant slug provided - use global token (backward compatibility)
@@ -190,6 +192,24 @@ Deno.serve(async (req) => {
     }
 
     console.log('Successfully inserted sales status:', data);
+
+    // Dispara notificações de alerta em background (não bloqueia a resposta)
+    if (vendas_status === 'ALERTA_ZERO' && tenant_id) {
+      const notifyUrl = `${supabaseUrl}/functions/v1/notify-alert`;
+      fetch(notifyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          tenant_id,
+          tenant_name: tenantName || slugToUse || 'Desconhecido',
+          vendas_minuto,
+          vendas_status,
+        }),
+      }).catch(e => console.error('Erro ao chamar notify-alert:', e));
+    }
 
     return new Response(
       JSON.stringify({ 
