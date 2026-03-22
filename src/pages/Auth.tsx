@@ -221,7 +221,7 @@ const Auth = () => {
 
         if (!validateForm()) return;
 
-        const isDev = window.location.hostname.includes('lovable.app') || window.location.hostname === 'localhost';
+        const isDev = window.location.hostname.includes('lovable') || window.location.hostname === 'localhost';
 
         // Verify Turnstile token (skip in development)
         if (!isDev) {
