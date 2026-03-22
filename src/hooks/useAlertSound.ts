@@ -98,12 +98,16 @@ export const useAlertSound = (isAlert: boolean) => {
     // Handle alert state changes
     useEffect(() => {
         if (isAlert && !isMuted) {
-            startAlarm();
+            alarmCleanupRef.current = startAlarm();
         } else {
+            alarmCleanupRef.current?.();
+            alarmCleanupRef.current = undefined;
             stopAlarm();
         }
 
         return () => {
+            alarmCleanupRef.current?.();
+            alarmCleanupRef.current = undefined;
             stopAlarm();
         };
     }, [isAlert, isMuted, startAlarm, stopAlarm]);
