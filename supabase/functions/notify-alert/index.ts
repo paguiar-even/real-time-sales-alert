@@ -117,11 +117,53 @@ Deno.serve(async (req) => {
       results.whatsapp = 'not_configured';
     }
 
+    // PUSH NOTIFICATIONS
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@even.com.br';
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+
+    if (vapidPrivateKey && vapidPublicKey) {
+      try {
+        const { data: subscriptions } = await supabase
+          .from('push_subscriptions')
+          .select('endpoint, p256dh, auth');
+
+        if (subscriptions && subscriptions.length > 0) {
+          const webpush = (await import('npm:web-push@3.6.7')).default;
+          webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+
+          const pushPayload = JSON.stringify({
+            title: `🚨 ALERTA ZERO — ${tenant_name}`,
+            body: `Nenhuma venda no último minuto. ${now}`,
+            url: '/monitor',
+          });
+
+          const pushResults = await Promise.allSettled(
+            subscriptions.map((sub: any) =>
+              webpush.sendNotification(
+                { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                pushPayload
+              )
+            )
+          );
+
+          const sent = pushResults.filter((r: any) => r.status === 'fulfilled').length;
+          results.push = `sent_to_${sent}_of_${subscriptions.length}`;
+        } else {
+          results.push = 'no_subscribers';
+        }
+      } catch (e) {
+        results.push = `error: ${(e as Error).message}`;
+      }
+    } else {
+      results.push = 'not_configured';
+    }
+
     // Log notification
     await supabase.from('alert_notifications_log').insert({
       tenant_id,
       tenant_name,
-      channels: Object.keys(results).filter(k => results[k] === 'sent'),
+      channels: Object.keys(results).filter(k => results[k] === 'sent' || results[k]?.startsWith?.('sent_to_')),
       results,
     });
 
