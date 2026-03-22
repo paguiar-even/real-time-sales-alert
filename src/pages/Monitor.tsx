@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Maximize2, Minimize2, Volume2, VolumeX, LogOut, Settings } from "lucide-react";
+import { Loader2, Maximize2, Minimize2, Volume2, VolumeX, LogOut, Settings, Bell, BellOff } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
 import { useSalesStatus } from "@/hooks/useSalesStatus";
@@ -9,6 +9,7 @@ import { useFullscreen } from "@/hooks/useFullscreen";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useAdmin } from "@/hooks/useAdmin";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { SalesIndicator } from "@/components/monitor/SalesIndicator";
 import { TimeSinceUpdate } from "@/components/monitor/TimeSinceUpdate";
 import { SalesChart } from "@/components/monitor/SalesChart";
@@ -31,6 +32,7 @@ const Monitor = () => {
     const { isAdmin } = useAdmin();
     const hasLoggedAccess = useRef(false);
     const [isSalesHidden, setIsSalesHidden] = useState(false);
+    const { isSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
 
     const toggleSalesVisibility = () => setIsSalesHidden(prev => !prev);
 
@@ -196,6 +198,17 @@ const Monitor = () => {
                             >
                                 {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
                             </Button>
+                            {isSupported && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={isSubscribed ? unsubscribe : subscribe}
+                                    disabled={pushLoading}
+                                    className="rounded-full text-white/70 hover:text-white hover:bg-white/10"
+                                >
+                                    {pushLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : isSubscribed ? <BellOff className="w-6 h-6" /> : <Bell className="w-6 h-6" />}
+                                </Button>
+                            )}
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -327,6 +340,25 @@ const Monitor = () => {
                                 {isMuted ? <VolumeX className="w-4 h-4 mr-2" /> : <Volume2 className="w-4 h-4 mr-2" />}
                                 {isMuted ? "Som desativado" : "Som ativo"}
                             </Button>
+                            {isSupported && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={isSubscribed ? unsubscribe : subscribe}
+                                    disabled={pushLoading}
+                                    className="rounded-full border-2 hover:bg-white/20"
+                                    style={{ borderColor: "#00313C", color: "#00313C", backgroundColor: "transparent" }}
+                                >
+                                    {pushLoading ? (
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    ) : isSubscribed ? (
+                                        <BellOff className="w-4 h-4 mr-2" />
+                                    ) : (
+                                        <Bell className="w-4 h-4 mr-2" />
+                                    )}
+                                    {isSubscribed ? "Push ativo" : "Ativar push"}
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 size="sm"
