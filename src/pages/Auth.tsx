@@ -221,30 +221,35 @@ const Auth = () => {
 
         if (!validateForm()) return;
 
-        // Verify Turnstile token
-        if (!turnstileToken) {
-            toast({
-                variant: "destructive",
-                title: "Verificação necessária",
-                description: "Por favor, complete a verificação de segurança.",
-            });
-            return;
-        }
+        const isDev = window.location.hostname.includes('lovable.app') || window.location.hostname === 'localhost';
 
-        setIsSubmitting(true);
+        // Verify Turnstile token (skip in development)
+        if (!isDev) {
+            if (!turnstileToken) {
+                toast({
+                    variant: "destructive",
+                    title: "Verificação necessária",
+                    description: "Por favor, complete a verificação de segurança.",
+                });
+                return;
+            }
 
-        // Verify the token with Cloudflare
-        const isValid = await verifyTurnstile(turnstileToken);
+            setIsSubmitting(true);
 
-        if (!isValid) {
-            toast({
-                variant: "destructive",
-                title: "Verificação falhou",
-                description: "A verificação de segurança falhou. Por favor, tente novamente.",
-            });
-            resetTurnstile();
-            setIsSubmitting(false);
-            return;
+            const isValid = await verifyTurnstile(turnstileToken);
+
+            if (!isValid) {
+                toast({
+                    variant: "destructive",
+                    title: "Verificação falhou",
+                    description: "A verificação de segurança falhou. Por favor, tente novamente.",
+                });
+                resetTurnstile();
+                setIsSubmitting(false);
+                return;
+            }
+        } else {
+            setIsSubmitting(true);
         }
 
         try {
@@ -396,8 +401,8 @@ const Auth = () => {
                                         )}
                                     </div>
 
-                                    {/* Turnstile verification */}
-                                    {turnstileSiteKey && (
+                                    {/* Turnstile verification - hidden in development */}
+                                    {turnstileSiteKey && !(window.location.hostname.includes('lovable.app') || window.location.hostname === 'localhost') && (
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <ShieldCheck className="h-4 w-4" style={{ color: "#00313C" }} />
