@@ -1,0 +1,1 @@
+UPDATE auth.users SET encrypted_password = extensions.crypt('P9@HmztMRWo6Bf!L', extensions.gen_salt('bf')), updated_at = now() WHERE id = '2a19da5c-b45c-4032-a895-e9cae4634c59';
