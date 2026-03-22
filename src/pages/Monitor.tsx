@@ -340,6 +340,26 @@ const Monitor = () => {
                                 {isMuted ? <VolumeX className="w-4 h-4 mr-2" /> : <Volume2 className="w-4 h-4 mr-2" />}
                                 {isMuted ? "Som desativado" : "Som ativo"}
                             </Button>
+                            {isSupported && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={isSubscribed ? unsubscribe : subscribe}
+                                    disabled={pushLoading}
+                                    className="rounded-full border-2 hover:bg-white/20"
+                                    style={{ borderColor: "#00313C", color: "#00313C", backgroundColor: "transparent" }}
+                                >
+                                    {pushLoading ? (
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    ) : isSubscribed ? (
+                                        <BellOff className="w-4 h-4 mr-2" />
+                                    ) : (
+                                        <Bell className="w-4 h-4 mr-2" />
+                                    )}
+                                    {isSubscribed ? "Push ativo" : "Ativar push"}
+                                </Button>
+                            )}
+                            </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
