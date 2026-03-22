@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.get-turnstile-sitekey]
 verify_jwt = false
+
+[functions.notify-alert]
+verify_jwt = false

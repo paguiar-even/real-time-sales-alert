@@ -193,6 +193,24 @@ Deno.serve(async (req) => {
 
     console.log('Successfully inserted sales status:', data);
 
+    // Dispara notificações de alerta em background (não bloqueia a resposta)
+    if (vendas_status === 'ALERTA_ZERO' && tenant_id) {
+      const notifyUrl = `${supabaseUrl}/functions/v1/notify-alert`;
+      fetch(notifyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          tenant_id,
+          tenant_name: tenantName || slugToUse || 'Desconhecido',
+          vendas_minuto,
+          vendas_status,
+        }),
+      }).catch(e => console.error('Erro ao chamar notify-alert:', e));
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
