@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Maximize2, Minimize2, Volume2, VolumeX, LogOut, Settings } from "lucide-react";
+import { Loader2, Maximize2, Minimize2, Volume2, VolumeX, LogOut, Settings, Bell, BellOff } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
 import { useSalesStatus } from "@/hooks/useSalesStatus";
