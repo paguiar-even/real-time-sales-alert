@@ -86,6 +86,8 @@ export const useAlertSound = (isAlert: boolean) => {
             localStorage.setItem("alertMuted", String(newValue));
 
             if (newValue) {
+                alarmCleanupRef.current?.();
+                alarmCleanupRef.current = undefined;
                 stopAlarm();
             }
 
