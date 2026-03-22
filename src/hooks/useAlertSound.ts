@@ -10,6 +10,7 @@ export const useAlertSound = (isAlert: boolean) => {
     const oscillatorRef = useRef<OscillatorNode | null>(null);
     const gainNodeRef = useRef<GainNode | null>(null);
     const isPlayingRef = useRef(false);
+    const alarmCleanupRef = useRef<(() => void) | undefined>(undefined);
 
     const createAlarmSound = useCallback(() => {
         if (!audioContextRef.current) {
