@@ -32,6 +32,7 @@ const Monitor = () => {
     const { isAdmin } = useAdmin();
     const hasLoggedAccess = useRef(false);
     const [isSalesHidden, setIsSalesHidden] = useState(false);
+    const { isSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
 
     const toggleSalesVisibility = () => setIsSalesHidden(prev => !prev);
 
