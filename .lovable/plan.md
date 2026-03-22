@@ -1,34 +1,22 @@
 
 
-## Plan: Create Push Notifications Hook + Database Table
+## Plan: Add Push Notification Button to Monitor
 
-### 1. Database Migration — `push_subscriptions` table
+### 1. Update imports (line 3)
 
-The hook references `push_subscriptions` which doesn't exist. Create it:
+Add `Bell, BellOff` to the existing lucide-react import. Add new import for `usePushNotifications`.
 
-```sql
-CREATE TABLE push_subscriptions (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid NOT NULL,
-  endpoint text NOT NULL UNIQUE,
-  p256dh text NOT NULL,
-  auth text NOT NULL,
-  user_agent text,
-  created_at timestamptz DEFAULT now()
-);
+### 2. Add hook call (after line 33)
 
-ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can manage own subscriptions"
-  ON push_subscriptions FOR ALL
-  TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+```ts
+const { isSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
 ```
 
-### 2. Create `src/hooks/usePushNotifications.ts`
+### 3. Normal mode — add push button after the sound button (after line 329, before the fullscreen button)
 
-Exactly as provided by the user — registers service worker, manages push subscription via PushManager API, stores/removes subscription in `push_subscriptions` table.
+The push notification toggle button with `Bell`/`BellOff` icons, matching the existing button style.
 
-**Note**: Requires `VITE_VAPID_PUBLIC_KEY` env var to be set for push to work. Will need VAPID keys generated and the public key added to the project.
+### 4. Fullscreen mode — add push button after the sound button (after line 198, before the minimize button)
+
+A ghost icon button matching the existing fullscreen header style, toggling `Bell`/`BellOff`.
 
