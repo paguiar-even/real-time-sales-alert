@@ -90,8 +90,8 @@ export const useSalesStatus = () => {
 
             for (let i = 0; i < 24; i++) {
                 const hour = String(i).padStart(2, "0") + "h";
-                const data = hourlyMap.get(hour) || { total: 0, hasZero: false };
-                hourlyArray.push({ hour, ...data });
+                const entry = hourlyMap.get(hour) || { total: 0, hasZero: false };
+                hourlyArray.push({ hour, ...entry });
             }
 
             setHourlyData(hourlyArray);
