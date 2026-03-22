@@ -319,17 +319,17 @@ const Admin = () => {
         }
 
         // Enrich with tenant names and user emails
-        const enrichedData: UserTenant[] = [];
-
-        for (const ut of data || []) {
-            const { data: emailData } = await supabase.rpc("get_user_email", { user_uuid: ut.user_id });
-            const tenant = tenants.find(t => t.id === ut.tenant_id);
-            enrichedData.push({
-                ...ut,
-                user_email: emailData || "Unknown",
-                tenant_name: tenant?.name || "Unknown"
-            });
-        }
+        const enrichedData: UserTenant[] = await Promise.all(
+            (data || []).map(async (ut) => {
+                const { data: emailData } = await supabase.rpc("get_user_email", { user_uuid: ut.user_id });
+                const tenant = tenants.find(t => t.id === ut.tenant_id);
+                return {
+                    ...ut,
+                    user_email: emailData || "Unknown",
+                    tenant_name: tenant?.name || "Unknown"
+                };
+            })
+        );
         setUserTenants(enrichedData);
         setLoadingUserTenants(false);
     };
