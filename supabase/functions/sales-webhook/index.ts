@@ -146,6 +146,7 @@ Deno.serve(async (req) => {
       }
 
       tenant_id = tenantData.id;
+      tenantName = tenantData.name;
       console.log(`Authenticated tenant: ${tenantData.name} (${tenant_id})`);
     } else {
       // No tenant slug provided - use global token (backward compatibility)
