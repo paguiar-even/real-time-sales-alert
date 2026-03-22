@@ -198,6 +198,17 @@ const Monitor = () => {
                             >
                                 {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
                             </Button>
+                            {isSupported && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={isSubscribed ? unsubscribe : subscribe}
+                                    disabled={pushLoading}
+                                    className="rounded-full text-white/70 hover:text-white hover:bg-white/10"
+                                >
+                                    {pushLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : isSubscribed ? <BellOff className="w-6 h-6" /> : <Bell className="w-6 h-6" />}
+                                </Button>
+                            )}
                             <Button
                                 variant="ghost"
                                 size="icon"
