@@ -449,7 +449,7 @@ const Auth = () => {
                                     borderColor: "#00313C",
                                     color: "#FFB81C"
                                 }}
-                                disabled={isSubmitting || (!isForgotPassword && turnstileSiteKey && !turnstileToken)}
+                                disabled={isSubmitting || (!isForgotPassword && turnstileSiteKey && !turnstileToken && !(window.location.hostname.includes('lovable') || window.location.hostname === 'localhost'))}
                             >
                                 {isSubmitting ? (
                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
