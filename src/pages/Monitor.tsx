@@ -9,6 +9,7 @@ import { useFullscreen } from "@/hooks/useFullscreen";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useAdmin } from "@/hooks/useAdmin";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { SalesIndicator } from "@/components/monitor/SalesIndicator";
 import { TimeSinceUpdate } from "@/components/monitor/TimeSinceUpdate";
 import { SalesChart } from "@/components/monitor/SalesChart";
