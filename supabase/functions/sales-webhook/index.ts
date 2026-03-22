@@ -100,6 +100,7 @@ Deno.serve(async (req) => {
     // Lookup tenant and validate token
     const slugToUse = tenantSlug || rawBody.tenant_slug;
     let tenant_id: string | null = null;
+    let tenantName: string | null = null;
     
     if (slugToUse) {
       // Find tenant by slug and validate its specific token
