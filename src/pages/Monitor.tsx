@@ -359,7 +359,6 @@ const Monitor = () => {
                                     {isSubscribed ? "Push ativo" : "Ativar push"}
                                 </Button>
                             )}
-                            </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
