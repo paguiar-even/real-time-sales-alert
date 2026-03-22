@@ -1,15 +1,15 @@
 
 
-## Plan: Replace `useAlertSound.ts` content
+## Plan: Rename shadowed variables in `useSalesStatus.ts`
 
-Replace the entire content of `src/hooks/useAlertSound.ts` with the user-provided code. The key changes are:
+Two targeted renames in `fetchHourlyData` to eliminate variable shadowing:
 
-1. Add `alarmCleanupRef` to properly track and clean up the pulse interval
-2. Fix `startAlarm` to return `undefined` explicitly when not starting
-3. Store cleanup function from `startAlarm` in `alarmCleanupRef` 
-4. Call cleanup in `toggleMute`, effect cleanup, and unmount
-5. Minor: wrap `oscillatorRef.current.stop()` error catch without variable
+1. **Line 78**: Rename `current` (already named `current` in the forEach — actually need to verify current name is `data`) → confirm it's `data`, rename to `current`
+2. **Lines 93-94**: Rename `data` to `entry` in the array conversion block
 
-**Files to modify:**
-- `src/hooks/useAlertSound.ts` — full replacement with provided code
+**File:** `src/hooks/useSalesStatus.ts`
+- Lines ~76-85: In the forEach, rename the inner `data` variable to `current`
+- Lines ~93-94: Rename `data` to `entry` in the hourly array conversion loop
+
+No other changes.
 
