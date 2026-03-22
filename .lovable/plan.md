@@ -1,15 +1,13 @@
 
 
-## Plan: Rename shadowed variables in `useSalesStatus.ts`
+## Plan: Replace for...of with Promise.all in `fetchUserTenants`
 
-Two targeted renames in `fetchHourlyData` to eliminate variable shadowing:
+**File:** `src/pages/Admin.tsx`  
+**Lines 321-334:** Replace the sequential `for...of` loop with parallel `Promise.all` + `.map()`.
 
-1. **Line 78**: Rename `current` (already named `current` in the forEach — actually need to verify current name is `data`) → confirm it's `data`, rename to `current`
-2. **Lines 93-94**: Rename `data` to `entry` in the array conversion block
+- Remove `const enrichedData: UserTenant[] = [];` and the `for...of` block
+- Replace with `const enrichedData: UserTenant[] = await Promise.all(...)` using async map
+- Keep `setUserTenants` and `setLoadingUserTenants` calls unchanged
 
-**File:** `src/hooks/useSalesStatus.ts`
-- Lines ~76-85: In the forEach, rename the inner `data` variable to `current`
-- Lines ~93-94: Rename `data` to `entry` in the hourly array conversion loop
-
-No other changes.
+This parallelizes the `get_user_email` RPC calls for better performance.
 
