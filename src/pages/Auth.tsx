@@ -401,8 +401,8 @@ const Auth = () => {
                                         )}
                                     </div>
 
-                                    {/* Turnstile verification */}
-                                    {turnstileSiteKey && (
+                                    {/* Turnstile verification - hidden in development */}
+                                    {turnstileSiteKey && !(window.location.hostname.includes('lovable.app') || window.location.hostname === 'localhost') && (
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <ShieldCheck className="h-4 w-4" style={{ color: "#00313C" }} />
